@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Target Achieve</string>
+    <string name="user_name">उपयोगकर्ता का नाम</string>
+    <string name="mobile_number">मोबाइल नंबर</string>
+    <string name="taxi_type">टैक्सी प्रकार</string>
+    <string name="shift">शिफ्ट</string>
+    <string name="airport">एयरपोर्ट</string>
+    <string name="biometric_lock">बायोमेट्रिक लॉक</string>
+    <string name="language_title">भाषा / Language</string>
+    <string name="share_app">ऐप साझा करें</string>
+    <string name="support">सहायता</string>
+    <string name="admin_panel">🔒 एडमिन पैनल</string>
+</resources>

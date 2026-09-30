@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Target Achieve</string>
+    <string name="user_name">اسم المستخدم</string>
+    <string name="mobile_number">رقم الهاتف</string>
+    <string name="taxi_type">نوع التاكسي</string>
+    <string name="shift">وردية</string>
+    <string name="airport">المطار</string>
+    <string name="biometric_lock">القفل البيومتري</string>
+    <string name="language_title">اللغة / Language</string>
+    <string name="share_app">مشاركة التطبيق</string>
+    <string name="support">الدعم</string>
+    <string name="admin_panel">🔒 لوحة المسؤول</string>
+</resources>

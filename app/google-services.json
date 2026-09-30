@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "502334295807",
+    "project_id": "target-achieve",
+    "storage_bucket": "target-achieve.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:502334295807:android:f027645f0566744b6846ca",
+        "android_client_info": {
+          "package_name": "com.harunrashid.targetachieve"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCR5yvLnpIp16aqSz2FzVtfThiKeRa0gd0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

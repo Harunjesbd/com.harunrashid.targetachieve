@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">Target Achieve</string>
+    <string name="user_name">User Name</string>
+    <string name="mobile_number">Mobile Number</string>
+    <string name="taxi_type">Taxi Type</string>
+    <string name="shift">Shift</string>
+    <string name="airport">Airport</string>
+    <string name="biometric_lock">Biometric Lock</string>
+    <string name="language_title">Language / भाषा / زبان / اللغة</string>
+    <string name="share_app">Share This App</string>
+    <string name="support">Support</string>
+    <string name="admin_panel">🔒 Admin Panel</string>
+    <string name="nav_open">Open navigation drawer</string>
+    <string name="nav_close">Close navigation drawer</string>
+
+    <!-- Signup Screen Strings -->
+    <string name="app_title">TARGET ACHIEVE</string>
+    <string name="app_subtitle">Dubai Taxi Salary Tracker</string>
+    <string name="label_your_name">Your Name</string>
+    <string name="hint_your_name">e.g. Md Rahim Uddin</string>
+    <string name="label_driver_id">Driver ID</string>
+    <string name="hint_driver_id">e.g. 123456</string>
+    <string name="label_mobile_number">Mobile Number</string>
+    <string name="hint_mobile_number">e.g. +971501234567</string>
+    <string name="radio_shift_taxi">Shift Taxi</string>
+    <string name="radio_airport_taxi">Airport Taxi</string>
+    <string name="btn_open_target_achieve">OPEN TARGET ACHIEVE</string>
+</resources>

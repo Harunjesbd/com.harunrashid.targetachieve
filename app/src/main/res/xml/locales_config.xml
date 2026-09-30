@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" /> <!-- Default English -->
+    <locale android:name="hi" /> <!-- Hindi -->
+    <locale android:name="ur" /> <!-- Urdu (RTL) -->
+    <locale android:name="ar" /> <!-- Arabic (RTL) -->
+</locale-config>
