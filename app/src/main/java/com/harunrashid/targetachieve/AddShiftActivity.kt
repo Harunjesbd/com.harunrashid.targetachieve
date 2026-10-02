@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.DatePickerDialog
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
@@ -96,6 +95,7 @@ class AddShiftActivity : AppCompatActivity() {
         updateDateLabel()
 
         binding.tvDate.setOnClickListener { showDatePicker() }
+
         binding.btnCapture.setOnClickListener {
             showPhotoGuideline {
                 checkCameraPermissionAndLaunch()
@@ -107,6 +107,7 @@ class AddShiftActivity : AppCompatActivity() {
                 galleryLauncher.launch("image/*")
             }
         }
+
         binding.btnSaveShift.setOnClickListener { saveShift() }
     }
 
@@ -166,8 +167,8 @@ class AddShiftActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Is the photo clear?")
-            .setMessage("Make sure the photo is clear and complete. Press Save to continue, or Retake.")
-            .setPositiveButton("Save") { _, _ -> runOcr(bitmap) }
+            .setMessage("Make sure the photo is clear and complete. Press Continue to read data.")
+            .setPositiveButton("Continue") { _, _ -> runOcr(bitmap) }
             .setNegativeButton("Retake") { _, _ ->
                 binding.ivPreview.visibility = View.GONE
                 binding.formContainer.visibility = View.GONE
@@ -178,7 +179,7 @@ class AddShiftActivity : AppCompatActivity() {
 
     private fun runOcr(bitmap: Bitmap) {
         binding.progressBar.visibility = View.VISIBLE
-        binding.tvOcrStatus.text = "Reading data from image (ML Kit)..."
+        binding.tvOcrStatus.text = "Reading data from image..."
 
         val image = InputImage.fromBitmap(bitmap, 0)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -188,45 +189,40 @@ class AddShiftActivity : AppCompatActivity() {
                 val mlKitText = visionText.text
                 val dateString = sdf.format(selectedDate.time)
 
-                // Log for debugging
-                Log.d("OCR_RAW", "===== RAW OCR TEXT START =====\n$mlKitText\n===== RAW OCR TEXT END =====")
+                // ===== TEMPORARY DEBUG =====
+                Log.d("OCR_RAW", "===== START =====\n$mlKitText\n===== END =====")
 
-                // Show raw text in dialog so you can copy easily
-                showRawOcrDialog(mlKitText)
-
-                val parsed = ShiftTextParser.parse(mlKitText, dateString)
-                fillForm(parsed)
-
-                binding.progressBar.visibility = View.GONE
-                binding.tvOcrStatus.text = "Data read (ML Kit) - please check below"
-                binding.formContainer.visibility = View.VISIBLE
+                AlertDialog.Builder(this)
+                    .setTitle("OCR Raw Text (Debug)")
+                    .setMessage(mlKitText.take(2000))
+                    .setPositiveButton("Copy") { _, _ ->
+                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("OCR", mlKitText))
+                        Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Continue") { _, _ ->
+                        val parsed = ShiftTextParser.parse(mlKitText, dateString)
+                        fillForm(parsed)
+                        binding.progressBar.visibility = View.GONE
+                        binding.tvOcrStatus.text = "Data loaded - please check and edit if needed"
+                        binding.formContainer.visibility = View.VISIBLE
+                    }
+                    .setCancelable(false)
+                    .show()
+                // ===== END TEMPORARY =====
             }
             .addOnFailureListener { e ->
                 binding.progressBar.visibility = View.GONE
-                binding.tvOcrStatus.text = "OCR failed (${e.message}) - please enter manually"
+                binding.tvOcrStatus.text = "Could not read image - please enter manually"
                 fillForm(ShiftRecord(dateString = sdf.format(selectedDate.time)))
                 binding.formContainer.visibility = View.VISIBLE
+                Toast.makeText(this, "OCR failed: ${e.message}", Toast.LENGTH_LONG).show()
             }
-    }
-
-    private fun showRawOcrDialog(rawText: String) {
-        AlertDialog.Builder(this)
-            .setTitle("OCR Raw Text (for debugging)")
-            .setMessage(rawText.take(1500) + if (rawText.length > 1500) "\n\n... (truncated)" else "")
-            .setPositiveButton("Copy Full Text") { _, _ ->
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("OCR Text", rawText)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, "OCR text copied to clipboard", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Close", null)
-            .show()
     }
 
     private fun fillForm(record: ShiftRecord) {
         binding.etPlateNo.setText(record.plateNo)
         binding.etShiftTotal.setText(if (record.shiftTotal != 0.0) record.shiftTotal.toString() else "")
-        binding.etWaitingCharges.setText(if (record.waitingCharges != 0.0) record.waitingCharges.toString() else "")
         binding.etTotalSharjah.setText(if (record.totalSharjah != 0.0) record.totalSharjah.toString() else "")
         binding.etTotalTollways.setText(if (record.totalTollways != 0.0) record.totalTollways.toString() else "")
         binding.etShiftTrips.setText(if (record.shiftTrips != 0) record.shiftTrips.toString() else "")
@@ -250,9 +246,8 @@ class AddShiftActivity : AppCompatActivity() {
 
         val record = ShiftRecord(
             dateString = dateString,
-            plateNo = binding.etPlateNo.text.toString(),
+            plateNo = binding.etPlateNo.text.toString().trim(),
             shiftTotal = binding.etShiftTotal.text.toString().toDoubleOrNull() ?: 0.0,
-            waitingCharges = binding.etWaitingCharges.text.toString().toDoubleOrNull() ?: 0.0,
             totalSharjah = binding.etTotalSharjah.text.toString().toDoubleOrNull() ?: 0.0,
             totalTollways = binding.etTotalTollways.text.toString().toDoubleOrNull() ?: 0.0,
             shiftTrips = binding.etShiftTrips.text.toString().toIntOrNull() ?: 0,

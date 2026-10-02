@@ -5,32 +5,76 @@
     android:background="#FFFFFF"
     android:orientation="vertical">
 
-    <!-- Header Section -->
+    <!-- Header Section with Profile Picture -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/royal_blue"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/tvDrawerName"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="User Name"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tvDrawerMobile"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Mobile Number"
-            android:textColor="#DCE3FF"
-            android:textSize="13sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="User profile:"
+                android:textColor="#DCE3FF"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvDrawerName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="User Name"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDrawerMobile"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Mobile Number"
+                android:textColor="#DCE3FF"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tvDrawerDriverNo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Driver No: -"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Profile Picture Upload Area -->
+        <LinearLayout
+            android:id="@+id/btnUploadProfilePic"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:background="#FFFFFF"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="4dp">
+
+            <ImageView
+                android:id="@+id/ivProfilePic"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:scaleType="centerCrop"
+                android:src="@android:drawable/ic_menu_camera"
+                android:contentDescription="Profile picture" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Scrollable Content -->
@@ -96,7 +140,7 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
-            <!-- 🌐 Language Selection Section -->
+            <!-- Language Selection -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -109,13 +153,24 @@
                 android:id="@+id/spinnerLanguage"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp" />
+                android:layout_marginBottom="16dp" />
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="12dp"
                 android:background="#EEEEEE" />
+
+            <!-- Driver Guide (NEW) -->
+            <TextView
+                android:id="@+id/btnDriverGuide"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:padding="8dp"
+                android:text="📖 Driver Guide"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <!-- Share App -->
             <TextView
@@ -123,7 +178,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:drawablePadding="12dp"
                 android:padding="8dp"
                 android:text="Share This App"
                 android:textSize="14sp" />
@@ -159,7 +213,6 @@
                 android:text="Email: admininfo.bd@gmail.com"
                 android:textSize="14sp" />
 
-            <!-- Admin Panel Button -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -177,7 +230,6 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
-            <!-- Log Out Button -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

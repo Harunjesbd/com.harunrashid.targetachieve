@@ -85,10 +85,8 @@ object SalaryCalculator {
         val totalCleanMoney = dayResults.sumOf { it.cleanMoney }
         val baseSalary = dayResults.sumOf { it.dailyEarning }
 
-        val totalWaiting = sorted.sumOf { it.waitingCharges }
-        val totalSharjah = sorted.sumOf { it.totalSharjah }
         val totalTips = sorted.sumOf { it.tips }
-        val extraAdd = totalWaiting + totalSharjah + totalTips
+        val extraAdd = totalTips
 
         val totalKmHired = sorted.sumOf { it.kmHired }
         val totalKmVacant = sorted.sumOf { it.kmVacant }

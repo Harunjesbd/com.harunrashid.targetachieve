@@ -55,6 +55,7 @@
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
+                <!-- Total Clean Money -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -79,6 +80,7 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
+                <!-- Total Salary -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -104,6 +106,7 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
+                <!-- Target + Daily Breakdown -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -128,23 +131,42 @@
                         android:text="➤ For the next target you need per day: -"
                         android:textColor="@color/royal_blue"
                         android:textSize="14sp" />
-                    <!-- Daily Breakdown Section -->
-                    <TextView
-                        android:layout_width="wrap_content"
+
+                    <!-- Daily Breakdown Header with ⋮ menu -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginBottom="8dp"
-                        android:text="Daily Breakdown (Newest First)"
-                        android:textColor="#666666"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Daily Breakdown (Newest First)"
+                            android:textColor="#666666"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnCurrentMonthMenu"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:padding="6dp"
+                            android:text="⋮"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/royal_blue" />
+                    </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/dailyContainer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginBottom="16dp" />
+                        android:layout_marginBottom="8dp" />
                 </LinearLayout>
 
                 <Button
@@ -170,15 +192,6 @@
                     android:layout_height="wrap_content"
                     android:minHeight="56dp"
                     android:text="Finalize &amp; Save This Period" />
-
-                <Button
-                    android:id="@+id/btnViewFullPeriod"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:minHeight="48dp"
-                    android:text="View Full Period Details"
-                    android:textStyle="bold" />
 
             </LinearLayout>
         </ScrollView>

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -49,7 +48,7 @@
         <ImageView
             android:id="@+id/ivPreview"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="180dp"
             android:layout_marginTop="12dp"
             android:scaleType="centerCrop"
             android:visibility="gone" />
@@ -77,162 +76,357 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:visibility="gone">
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Helper for each row -->
+            <!-- Driver No -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Plate No">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Driver No"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etPlateNo"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="text"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Shift Total -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Shift Total">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Shift Total"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etShiftTotal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Total Sharjah -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Waiting Charges">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etWaitingCharges"
-                    android:layout_width="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Total Sharjah">
-                <com.google.android.material.textfield.TextInputEditText
+                    android:layout_weight="1.2"
+                    android:text="Total Sharjah"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etTotalSharjah"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Total Tollways -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Total Tollways">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Total Tollways"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etTotalTollways"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Shift Trips -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Shift Trips">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Shift Trips"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etShiftTrips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="number"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Bookings -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Bookings">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Bookings"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etBookings"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="number"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Airport Trips -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Airport Trips">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Airport Trips"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etAirportTrips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="number"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- KM Hired -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="KM Hired">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="KM Hired"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etKmHired"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- KM Vacant -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="KM Vacant">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="KM Vacant"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etKmVacant"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Paid In Careem -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Paid In Careem">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Paid In Careem"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etPaidInCareem"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Hala Peak -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Hala Peak">
-                <com.google.android.material.textfield.TextInputEditText
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Hala Peak"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
                     android:id="@+id/etHalaPeak"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Tips -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Tips">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etTips"
-                    android:layout_width="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_weight="1.2"
+                    android:text="Tips"
+                    android:textColor="@color/royal_blue"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <EditText
+                    android:id="@+id/etTips"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:drawable/edit_text"
+                    android:paddingHorizontal="8dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000"
+                    android:inputType="numberDecimal"
+                    android:gravity="end|center_vertical" />
+            </LinearLayout>
 
             <Button
                 android:id="@+id/btnSaveShift"
@@ -242,6 +436,5 @@
                 android:text="💾 Save Shift" />
 
         </LinearLayout>
-
     </LinearLayout>
 </ScrollView>

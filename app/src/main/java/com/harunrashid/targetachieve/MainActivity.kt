@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -83,10 +84,20 @@ class MainActivity : AppCompatActivity() {
             finalizeCurrentPeriod()
         }
 
-        // Full Period Details বাটন
-        binding.btnViewFullPeriod.setOnClickListener {
-            openFullPeriodDetails()
+        // ⋮ menu for Current Month Details
+        binding.btnCurrentMonthMenu.setOnClickListener { view ->
+            showCurrentMonthPopup(view)
         }
+    }
+
+    private fun showCurrentMonthPopup(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add("View Current Month Details")
+        popup.setOnMenuItemClickListener {
+            openFullPeriodDetails()
+            true
+        }
+        popup.show()
     }
 
     private fun openFullPeriodDetails() {
@@ -142,6 +153,10 @@ class MainActivity : AppCompatActivity() {
     private fun setupDrawerActions() {
         drawerBinding.btnShareApp.setOnClickListener {
             shareAppAsApk()
+        }
+
+        drawerBinding.btnDriverGuide.setOnClickListener {
+            showDriverGuide()
         }
 
         drawerBinding.btnWhatsAppSupport.setOnClickListener {
@@ -223,6 +238,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showDriverGuide() {
+        val guide = """
+            📖 Driver Guide - Target Achieve
+            
+            1. Open the app and complete Signup with your Name, Driver ID and Mobile.
+            
+            2. On Home screen you will see current period (21st to 20th).
+            
+            3. Tap "+ Add Today's Shift"
+               - Take photo or choose from Gallery of your Shift Summary receipt.
+               - Keep the receipt straight and under bright light.
+               - Check the numbers and edit if needed.
+               - Tap Save Shift.
+            
+            4. Home screen will show Total Clean Money, Salary and Daily Breakdown.
+            
+            5. Tap the ⋮ menu next to Daily Breakdown → View Current Month Details for full list.
+            
+            6. At the end of period (after 20th) tap "Finalize & Save This Period" to save the report.
+            
+            7. You can view old reports from "View Saved Reports".
+            
+            8. Use Biometric Lock for security.
+            
+            9. Change language anytime from the drawer.
+            
+            10. For help contact WhatsApp or Email from Support section.
+        """.trimIndent()
+
+        AlertDialog.Builder(this)
+            .setTitle("Driver Guide")
+            .setMessage(guide)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
     private fun performLogout() {
         AlertDialog.Builder(this)
             .setTitle("Logout")
@@ -288,6 +339,7 @@ class MainActivity : AppCompatActivity() {
 
                 drawerBinding.tvDrawerName.text = profile.name
                 drawerBinding.tvDrawerMobile.text = profile.mobile
+                drawerBinding.tvDrawerDriverNo.text = "Driver No: ${profile.driverId}"
 
                 if (profile.taxiTypeEnum() == TaxiType.AIRPORT_TAXI) {
                     drawerBinding.rbDrawerAirportTaxi.isChecked = true
@@ -389,7 +441,7 @@ class MainActivity : AppCompatActivity() {
                     "You're at the highest target level!"
                 }
 
-                // ===== Daily Breakdown (Newest → Oldest) =====
+                // Daily Breakdown
                 binding.dailyContainer.removeAllViews()
 
                 if (summary.dayResults.isEmpty()) {
