@@ -3,22 +3,27 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="12dp">
+
+    <EditText
+        android:id="@+id/etSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="🔍 Search name / mobile / driver no / id"
+        android:inputType="text" />
 
     <TextView
-        android:layout_width="wrap_content"
+        android:id="@+id/tvUserCount"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="Admin Panel - User Management"
-        android:textColor="#333333"
-        android:textSize="20sp"
+        android:padding="6dp"
+        android:text="Total users: 0"
         android:textStyle="bold" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewUsers"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 </LinearLayout>

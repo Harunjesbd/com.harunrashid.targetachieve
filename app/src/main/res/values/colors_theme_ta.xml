@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ta_graphite">#16181D</color>        <!-- মূল ব্যাকগ্রাউন্ড: গ্রাফাইট -->
+    <color name="ta_inky_blue">#141B3D</color>       <!-- কার্ড: ইঙ্কি ব্লু -->
+    <color name="ta_inky_blue_light">#232E63</color> <!-- আইকন-বক্স / সিলেক্টেড -->
+    <color name="ta_inky_border">#2A3566</color>     <!-- কার্ডের বর্ডার -->
+    <color name="ta_champagne">#E6CF9E</color>       <!-- হাইলাইট: শ্যাম্পেন -->
+    <color name="ta_white">#FFFFFF</color>           <!-- লেখা: সাদা বোল্ড -->
+</resources>

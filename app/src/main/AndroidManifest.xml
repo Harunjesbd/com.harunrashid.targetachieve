@@ -28,10 +28,11 @@
                 android:value="true" />
         </service>
 
-        <!-- Main Activity (LAUNCHER) -->
+        <!-- Main Activity (LAUNCHER) — নতুন গ্রাফাইট/ইঙ্কি ব্লু/শ্যাম্পেন থিম -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.TargetAchieve.Dark">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -39,16 +40,29 @@
         </activity>
 
         <activity
-            android:name=".PeriodDetailActivity"
-            android:exported="false" />
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TargetAchieve.Dark" />
 
         <activity
             android:name=".SignupActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.TargetAchieve.Dark" />
+
+        <activity
+            android:name=".ProfileEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TargetAchieve.Dark" />
+
+        <activity
+            android:name=".models.PeriodDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TargetAchieve.Dark" />
 
         <activity
             android:name=".AddShiftActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.TargetAchieve.Dark" />
 
         <activity
             android:name=".ReportsActivity"
@@ -60,7 +74,8 @@
 
         <activity
             android:name=".PaywallActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.TargetAchieve.Dark" />
 
         <!-- Camera / Gallery File Access Provider -->
         <provider
@@ -76,6 +91,7 @@
         <activity
             android:name=".AdminActivity"
             android:exported="false"
+            android:theme="@style/Theme.TargetAchieve.Dark"
             android:windowSoftInputMode="adjustResize" />
 
     </application>

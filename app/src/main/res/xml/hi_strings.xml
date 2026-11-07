@@ -10,4 +10,6 @@
     <string name="share_app">ऐप साझा करें</string>
     <string name="support">सहायता</string>
     <string name="admin_panel">🔒 एडमिन पैनल</string>
+    <string name="label_driver_id">ड्राइवर नंबर</string>
+    <string name="hint_driver_id">अपना ड्राइवर नंबर दर्ज करें</string>
 </resources>

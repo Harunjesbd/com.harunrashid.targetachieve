@@ -1,19 +1,10 @@
-package com.harunrashid.targetachieve;
+package com.harunrashid.targetachieve
 
-public class UserModel {
-    private String userId;
-    private long trialExpiryMillis;
-    private long subscriptionExpiryMillis;
-
-    public UserModel() {}
-
-    public UserModel(String userId, long trialExpiryMillis, long subscriptionExpiryMillis) {
-        this.userId = userId;
-        this.trialExpiryMillis = trialExpiryMillis;
-        this.subscriptionExpiryMillis = subscriptionExpiryMillis;
-    }
-
-    public String getUserId() { return userId; }
-    public long getTrialExpiryMillis() { return trialExpiryMillis; }
-    public long getSubscriptionExpiryMillis() { return subscriptionExpiryMillis; }
-}
+data class UserModel(
+    val id: String = "",
+    val name: String = "",
+    val mobile: String = "",
+    val driverId: String = "",
+    val trialExpiryMillis: Long = 0L,
+    val subscriptionExpiryMillis: Long = 0L
+)

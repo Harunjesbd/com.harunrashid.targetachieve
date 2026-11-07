@@ -3,7 +3,9 @@ package com.harunrashid.targetachieve.logic
 import com.harunrashid.targetachieve.models.ShiftRecord
 import com.harunrashid.targetachieve.models.TaxiType
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
+import kotlin.math.roundToLong
 
 // একদিনের হিসাবের ফলাফল
 data class DayResult(
@@ -15,48 +17,58 @@ data class DayResult(
     val dailyEarning: Double
 )
 
-// পুরো পিরিয়ডের (মাসের) সারসংক্ষেপ
+// পুরো পিরিয়ডের সারসংক্ষেপ
 data class PeriodSummary(
     val dayResults: List<DayResult>,
     val totalCleanMoney: Double,
     val baseSalary: Double,
-    val extraAdd: Double,           // Waiting Charges + Total Sharjah + Tips (যোগফল)
+    val extraAdd: Double,           // শুধু Tips
     val fuelPenalty: Double,
     val finalSalary: Double,
     val currentTargetPercent: Double,
     val nextTargetPercent: Double?,
-    val aedNeededPerDayForNextTarget: Double?
+    val aedNeededPerDayForNextTarget: Double?,
+    val remainingWorkDays: Int = 0   // হিসাবে ধরা বাকি কাজের দিন
 )
 
 object SalaryCalculator {
 
-    private const val FUEL_RATE_PER_KM = 0.66          // প্রতি কিমি জ্বালানি খরচ (AED)
-    private const val BOOKING_RATE = 6.5                // প্রতি বুকিং (AED)
-    private const val SHIFT_TRIP_RATE = 2.0             // প্রতি শিফট ট্রিপ (AED)
-    private const val FUEL_PENALTY_RATE = 0.50          // km vacant > km hired হলে অতিরিক্ত প্রতি কিমি (AED)
-
     private val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
 
-    // একদিনের Clean Money বের করে
+    /**
+     * একদিনের Clean Money
+     *  Add   = Shift Total + Paid in Careem − Hala Peak
+     *  Minus = KmHired×রেট + Tollways + Bookings×রেট + (ShiftTrips−Bookings)×রেট + AirportTrips×রেট
+     *  Clean = Add − Minus
+     */
     fun cleanMoneyFor(record: ShiftRecord, taxiType: TaxiType): Double {
         val add = record.shiftTotal + record.paidInCareem - record.halaPeak
-        val minus = (record.kmHired * FUEL_RATE_PER_KM) +
+        val normalTrips = (record.shiftTrips - record.bookings).coerceAtLeast(0)
+        val minus = (record.kmHired * AppRules.FUEL_RATE_PER_KM) +
                 record.totalTollways +
-                (record.bookings * BOOKING_RATE) +
-                (record.shiftTrips * SHIFT_TRIP_RATE) +
+                (record.bookings * AppRules.BOOKING_RATE) +
+                (normalTrips * AppRules.NORMAL_TRIP_RATE) +
                 (record.airportTrips * taxiType.airportTripRate())
         return add - minus
     }
 
-    // পুরো পিরিয়ডের (একটা মাসের সব দিনের রেকর্ড, তারিখ অনুযায়ী সাজানো) সম্পূর্ণ হিসাব
+    // আজ থেকে পিরিয়ড শেষ (২০ তারিখ) পর্যন্ত বাকি দিন (আজকে ধরে)
+    private fun remainingCalendarDays(): Int {
+        val today = Calendar.getInstance()
+        val end = Calendar.getInstance()
+        if (today.get(Calendar.DAY_OF_MONTH) >= AppRules.PERIOD_START_DAY) end.add(Calendar.MONTH, 1)
+        end.set(Calendar.DAY_OF_MONTH, AppRules.PERIOD_START_DAY - 1)
+        for (c in listOf(today, end)) {
+            c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0)
+            c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+        }
+        val diff = ((end.timeInMillis - today.timeInMillis) / 86_400_000L).toInt() + 1
+        return diff.coerceAtLeast(1)
+    }
+
     fun calculatePeriod(records: List<ShiftRecord>, taxiType: TaxiType): PeriodSummary {
-        // সঠিক তারিখ অনুসারে সাজানো (পুরনো থেকে নতুন)
         val sorted = records.sortedBy {
-            try {
-                dateFormat.parse(it.dateString)?.time ?: 0L
-            } catch (e: Exception) {
-                0L
-            }
+            try { dateFormat.parse(it.dateString)?.time ?: 0L } catch (e: Exception) { 0L }
         }
 
         var runningTotal = 0.0
@@ -65,11 +77,8 @@ object SalaryCalculator {
         sorted.forEachIndexed { index, record ->
             val clean = cleanMoneyFor(record, taxiType)
             runningTotal += clean
-            val dayNumber = index + 1
-            val average = runningTotal / dayNumber
+            val average = runningTotal / (index + 1)
             val slabPercent = CommissionSlab.percentFor(average)
-            val dailyEarning = clean * (slabPercent / 100.0)
-
             dayResults.add(
                 DayResult(
                     record = record,
@@ -77,39 +86,40 @@ object SalaryCalculator {
                     runningTotal = runningTotal,
                     runningAverage = average,
                     slabPercent = slabPercent,
-                    dailyEarning = dailyEarning
+                    dailyEarning = clean * (slabPercent / 100.0)
                 )
             )
         }
 
-        val totalCleanMoney = dayResults.sumOf { it.cleanMoney }
-        val baseSalary = dayResults.sumOf { it.dailyEarning }
+        val days = dayResults.size
+        val totalCleanMoney = runningTotal
 
-        val totalTips = sorted.sumOf { it.tips }
-        val extraAdd = totalTips
+        // পুরো পিরিয়ডের হিসাব: (মোট Clean ÷ দিন) × স্ল্যাব% = দৈনিক অংশ; দৈনিক অংশ × দিন = বেতন
+        val averageAll = if (days > 0) totalCleanMoney / days else 0.0
+        val slabAll = CommissionSlab.percentFor(averageAll)
+        var perDay = averageAll * slabAll / 100.0
+        if (AppRules.ROUND_DAILY_PART) perDay = perDay.roundToLong().toDouble()
+        val baseSalary = perDay * days
+
+        val extraAdd = sorted.sumOf { it.tips }
 
         val totalKmHired = sorted.sumOf { it.kmHired }
         val totalKmVacant = sorted.sumOf { it.kmVacant }
         val fuelPenalty = if (totalKmVacant > totalKmHired) {
-            (totalKmVacant - totalKmHired) * FUEL_PENALTY_RATE
+            (totalKmVacant - totalKmHired) * AppRules.FUEL_PENALTY_RATE
         } else 0.0
 
         val finalSalary = baseSalary + extraAdd - fuelPenalty
 
-        val latestAverage = dayResults.lastOrNull()?.runningAverage ?: 0.0
-        val currentTargetPercent = CommissionSlab.percentFor(latestAverage)
-        val nextSlab = CommissionSlab.nextSlab(latestAverage)
-
-        // পরের স্ল্যাবে পৌঁছাতে দৈনিক গড়ে কত AED বেশি লাগবে (বাকি দিনসংখ্যা দিয়ে ভাগ করে)
+        // পরের স্ল্যাবে (গড় >= সর্বনিম্ন) পৌঁছাতে বাকি কাজের দিনগুলোয় দৈনিক কত Clean Money লাগবে:
+        //   (পরের স্ল্যাবের গড় × (এ পর্যন্ত দিন + বাকি দিন) − এ পর্যন্ত মোট) ÷ বাকি দিন
+        val nextSlab = CommissionSlab.nextSlab(averageAll)
         var aedPerDayNeeded: Double? = null
-        if (nextSlab != null) {
-            val (_, requiredAverage) = nextSlab
-            val daysDone = dayResults.size
-            val remainingDays = (30 - daysDone).coerceAtLeast(1) // ডিফল্ট ৩০ দিনের পিরিয়ড ধরে আনুমানিক হিসাব
-            val currentTotal = runningTotal
-            val requiredTotal = requiredAverage * (daysDone + remainingDays)
-            val gap = (requiredTotal - currentTotal).coerceAtLeast(0.0)
-            aedPerDayNeeded = gap / remainingDays
+        val remainingWork = Math.max(1, Math.round(remainingCalendarDays() * AppRules.EXPECTED_WORK_RATIO).toInt())
+        if (nextSlab != null && days > 0) {
+            val requiredAverage = nextSlab.second
+            val requiredTotal = requiredAverage * (days + remainingWork)
+            aedPerDayNeeded = (requiredTotal - totalCleanMoney).coerceAtLeast(0.0) / remainingWork
         }
 
         return PeriodSummary(
@@ -119,9 +129,10 @@ object SalaryCalculator {
             extraAdd = extraAdd,
             fuelPenalty = fuelPenalty,
             finalSalary = finalSalary,
-            currentTargetPercent = currentTargetPercent,
+            currentTargetPercent = slabAll,
             nextTargetPercent = nextSlab?.first,
-            aedNeededPerDayForNextTarget = aedPerDayNeeded
+            aedNeededPerDayForNextTarget = aedPerDayNeeded,
+            remainingWorkDays = remainingWork
         )
     }
 }

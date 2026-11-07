@@ -1,16 +1,23 @@
 package com.harunrashid.targetachieve
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -28,114 +35,93 @@ import com.harunrashid.targetachieve.databinding.NavDrawerContentBinding
 import com.harunrashid.targetachieve.logic.NotificationHelper
 import com.harunrashid.targetachieve.logic.PeriodSummary
 import com.harunrashid.targetachieve.logic.SalaryCalculator
+import com.harunrashid.targetachieve.models.PeriodDetailActivity
 import com.harunrashid.targetachieve.models.Report
 import com.harunrashid.targetachieve.models.ShiftRecord
 import com.harunrashid.targetachieve.models.TaxiType
 import com.harunrashid.targetachieve.models.UserProfile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.concurrent.Executor
+import com.harunrashid.targetachieve.logic.NoticeHelper
+import com.harunrashid.targetachieve.logic.UpdateChecker
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var drawerBinding: NavDrawerContentBinding
+    private lateinit var drawerToggle: ActionBarDrawerToggle
 
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
     private var currentProfile: UserProfile? = null
-    private lateinit var drawerToggle: ActionBarDrawerToggle
-
     private var currentSummary: PeriodSummary? = null
     private var currentPeriodStart: Calendar? = null
     private var currentPeriodEnd: Calendar? = null
+    private var picCameraUri: Uri? = null
 
     private val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
+    private val adminEmail = "admininfo.bd@gmail.com"
+
+    // ---------- Profile picture launchers ----------
+    private val picCameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        if (ok) picCameraUri?.let { saveProfilePicture(it) }
+    }
+    private val picGalleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) saveProfilePicture(uri)
+    }
+    private val picCameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) launchPicCamera() else Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (auth.currentUser == null) {
-            navigateToSignup()
+        if (profileKey() == null) {
+            navigateToLogin()
             return
         }
 
         setSupportActionBar(binding.toolbar)
+        supportActionBar?.title = ""
         drawerBinding = binding.navDrawerContent
 
         setupDrawer()
         setupDrawerActions()
         setupLanguageSpinner()
 
-        binding.btnAddShift.setOnClickListener {
-            startActivity(Intent(this, AddShiftActivity::class.java))
-        }
-        binding.btnViewReports.setOnClickListener {
-            startActivity(Intent(this, ReportsActivity::class.java))
-        }
-        binding.btnFinalizePeriod.setOnClickListener {
-            finalizeCurrentPeriod()
-        }
-
-        // ⋮ menu for Current Month Details
-        binding.btnCurrentMonthMenu.setOnClickListener { view ->
-            showCurrentMonthPopup(view)
-        }
+        binding.btnAddShift.setOnClickListener { startActivity(Intent(this, AddShiftActivity::class.java)) }
+        binding.btnViewReports.setOnClickListener { startActivity(Intent(this, ReportsActivity::class.java)) }
+        binding.btnFinalizePeriod.setOnClickListener { finalizeCurrentPeriod() }
+        binding.btnCurrentMonthMenu.setOnClickListener { showCurrentMonthPopup(it) }
     }
 
-    private fun showCurrentMonthPopup(anchor: View) {
-        val popup = PopupMenu(this, anchor)
-        popup.menu.add("View Current Month Details")
-        popup.setOnMenuItemClickListener {
-            openFullPeriodDetails()
-            true
-        }
-        popup.show()
-    }
-
-    private fun openFullPeriodDetails() {
-        val summary = currentSummary
-        val start = currentPeriodStart
-        val end = currentPeriodEnd
-
-        if (summary == null || start == null || end == null) {
-            Toast.makeText(this, "No data yet", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        PeriodDetailActivity.daysList = summary.dayResults
-
-        val intent = Intent(this, PeriodDetailActivity::class.java).apply {
-            putExtra("periodStart", sdf.format(start.time))
-            putExtra("periodEnd", sdf.format(end.time))
-            putExtra("totalClean", summary.totalCleanMoney)
-            putExtra("finalSalary", summary.finalSalary)
-            putExtra("targetPercent", summary.currentTargetPercent)
-        }
-        startActivity(intent)
-    }
+    private var biometricAsked = false
 
     override fun onResume() {
         super.onResume()
-        if (auth.currentUser != null) {
-            val biometricEnabled = getSharedPreferences("app_prefs", MODE_PRIVATE)
-                .getBoolean("biometric_enabled", false)
+        if (profileKey() == null || !::drawerBinding.isInitialized) return
 
-            if (biometricEnabled) {
-                showBiometricPrompt()
-            } else {
-                loadProfileAndDashboard()
-            }
+        val biometricEnabled = getSharedPreferences("app_prefs", MODE_PRIVATE)
+            .getBoolean("biometric_enabled", false)
+
+        if (biometricEnabled && !biometricAsked) {
+            biometricAsked = true
+            showBiometricPrompt()
+        } else {
+            loadProfileAndDashboard()
         }
     }
 
+    // ---------- Drawer ----------
     private fun setupDrawer() {
         drawerToggle = ActionBarDrawerToggle(
             this, binding.drawerLayout, binding.toolbar,
@@ -151,244 +137,209 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDrawerActions() {
-        drawerBinding.btnShareApp.setOnClickListener {
-            shareAppAsApk()
-        }
-
-        drawerBinding.btnDriverGuide.setOnClickListener {
-            showDriverGuide()
-        }
+        drawerBinding.btnShareApp.setOnClickListener { shareAppAsApk() }
+        drawerBinding.btnDriverGuide.setOnClickListener { showDriverGuide() }
 
         drawerBinding.btnWhatsAppSupport.setOnClickListener {
-            val uri = Uri.parse("https://wa.me/971552335930")
-            startActivity(Intent(Intent.ACTION_VIEW, uri))
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/971552335930")))
         }
-
         drawerBinding.btnEmailSupport.setOnClickListener {
-            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:admininfo.bd@gmail.com")
-            }
-            startActivity(intent)
+            startActivity(Intent(Intent.ACTION_SENDTO).apply { data = Uri.parse("mailto:$adminEmail") })
         }
 
-        drawerBinding.btnAdminPanel.setOnClickListener {
-            val currentUser = auth.currentUser
-            if (currentUser == null) {
-                Toast.makeText(this, "User not logged in!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+        drawerBinding.btnEditProfile.setOnClickListener {
+            startActivity(Intent(this, ProfileEditActivity::class.java))
+        }
+        drawerBinding.btnUploadProfilePic.setOnClickListener { chooseProfilePictureSource() }
+        drawerBinding.btnAdminPanel.setOnClickListener { openAdminPanel() }
+        drawerBinding.btnLogout.setOnClickListener { performLogout() }
 
-            val userEmail = currentUser.email ?: ""
-            val profileName = currentProfile?.name ?: ""
-            val adminEmail = "admininfo.bd@gmail.com"
-
-            if (userEmail.equals(adminEmail, ignoreCase = true) || profileName.equals(adminEmail, ignoreCase = true)) {
-                startActivity(Intent(this, AdminActivity::class.java))
-            } else {
-                val uid = currentUser.uid
-                db.collection("admins").document(uid).get()
-                    .addOnSuccessListener { document ->
-                        if (document.exists()) {
-                            startActivity(Intent(this, AdminActivity::class.java))
-                        } else {
-                            Toast.makeText(this, "Access Denied: Only Admin can access this panel!", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                    .addOnFailureListener {
-                        Toast.makeText(this, "Access Denied: Only Admin can access this panel!", Toast.LENGTH_LONG).show()
-                    }
+        drawerBinding.rgDrawerTaxiType.setOnCheckedChangeListener { group, checkedId ->
+            if (group.isPressed || drawerBinding.rbDrawerAirportTaxi.isPressed || drawerBinding.rbDrawerShiftTaxi.isPressed) {
+                val t = if (checkedId == R.id.rbDrawerAirportTaxi) TaxiType.AIRPORT_TAXI else TaxiType.SHIFT_TAXI
+                updateTaxiType(t)
             }
         }
 
-        drawerBinding.root.findViewById<View?>(R.id.btnLogout)?.setOnClickListener {
-            performLogout()
-        }
-
-        drawerBinding.rgDrawerTaxiType.setOnCheckedChangeListener { _, checkedId ->
-            if (drawerBinding.rgDrawerTaxiType.isPressed) {
-                val newType = if (checkedId == R.id.rbDrawerAirportTaxi) TaxiType.AIRPORT_TAXI else TaxiType.SHIFT_TAXI
-                updateTaxiType(newType)
-            }
-        }
-
-        drawerBinding.switchBiometric.setOnCheckedChangeListener { buttonView, isChecked ->
-            if (buttonView.isPressed) {
-                if (isChecked) {
-                    val biometricManager = BiometricManager.from(this)
-                    when (biometricManager.canAuthenticate(
-                        BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                                BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                    )) {
-                        BiometricManager.BIOMETRIC_SUCCESS -> {
-                            getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
-                                .putBoolean("biometric_enabled", true).apply()
-                            Toast.makeText(this, "Biometric Lock Enabled", Toast.LENGTH_SHORT).show()
-                        }
-                        else -> {
-                            drawerBinding.switchBiometric.isChecked = false
-                            Toast.makeText(this, "Biometric not available on this device", Toast.LENGTH_LONG).show()
-                        }
-                    }
+        drawerBinding.switchBiometric.setOnCheckedChangeListener { button, isChecked ->
+            if (!button.isPressed) return@setOnCheckedChangeListener
+            if (isChecked) {
+                val ok = BiometricManager.from(this).canAuthenticate(
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                )
+                if (ok == BiometricManager.BIOMETRIC_SUCCESS) {
+                    getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putBoolean("biometric_enabled", true).apply()
+                    Toast.makeText(this, "Biometric Lock Enabled", Toast.LENGTH_SHORT).show()
                 } else {
-                    getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
-                        .putBoolean("biometric_enabled", false).apply()
-                    Toast.makeText(this, "Biometric Lock Disabled", Toast.LENGTH_SHORT).show()
+                    drawerBinding.switchBiometric.isChecked = false
+                    Toast.makeText(this, "Biometric not available on this device", Toast.LENGTH_LONG).show()
                 }
+            } else {
+                getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putBoolean("biometric_enabled", false).apply()
+                Toast.makeText(this, "Biometric Lock Disabled", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    // ---------- Driver Guide (follows app language) ----------
     private fun showDriverGuide() {
-        val guide = """
-            📖 Driver Guide - Target Achieve
-            
-            1. Open the app and complete Signup with your Name, Driver ID and Mobile.
-            
-            2. On Home screen you will see current period (21st to 20th).
-            
-            3. Tap "+ Add Today's Shift"
-               - Take photo or choose from Gallery of your Shift Summary receipt.
-               - Keep the receipt straight and under bright light.
-               - Check the numbers and edit if needed.
-               - Tap Save Shift.
-            
-            4. Home screen will show Total Clean Money, Salary and Daily Breakdown.
-            
-            5. Tap the ⋮ menu next to Daily Breakdown → View Current Month Details for full list.
-            
-            6. At the end of period (after 20th) tap "Finalize & Save This Period" to save the report.
-            
-            7. You can view old reports from "View Saved Reports".
-            
-            8. Use Biometric Lock for security.
-            
-            9. Change language anytime from the drawer.
-            
-            10. For help contact WhatsApp or Email from Support section.
-        """.trimIndent()
-
         AlertDialog.Builder(this)
-            .setTitle("Driver Guide")
-            .setMessage(guide)
+            .setTitle(getString(R.string.driver_guide_title))
+            .setMessage(getString(R.string.driver_guide_text))
             .setPositiveButton("OK", null)
             .show()
     }
 
+    // ---------- Admin panel: admins/{mobileKey} OR admin email ----------
+    private fun openAdminPanel() {
+        val key = profileKey() ?: return
+        lifecycleScope.launch {
+            try {
+                if (auth.currentUser == null) auth.signInAnonymously().await()
+                val isAdminDoc = db.collection("admins").document(key).get().await().exists()
+                if (isAdminDoc) {
+                    startActivity(Intent(this@MainActivity, AdminActivity::class.java))
+                } else {
+                    askAdminEmail()
+                }
+            } catch (e: Exception) {
+                askAdminEmail()
+            }
+        }
+    }
+
+    private fun askAdminEmail() {
+        val input = EditText(this).apply {
+            hint = "Admin email"
+            setPadding(48, 32, 48, 32)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Admin Access")
+            .setView(input)
+            .setPositiveButton("Open") { _, _ ->
+                if (input.text.toString().trim().equals(adminEmail, ignoreCase = true)) {
+                    startActivity(Intent(this, AdminActivity::class.java))
+                } else {
+                    Toast.makeText(this, "Access Denied: Only Admin can access this panel!", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ---------- Logout ----------
     private fun performLogout() {
         AlertDialog.Builder(this)
             .setTitle("Logout")
-            .setMessage("Are you sure you want to log out?")
+            .setMessage("Are you sure you want to log out? Your saved data stays safe. Log in again with Name, Driver No and Mobile.")
             .setPositiveButton("Yes") { _, _ ->
+                getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
+                    .remove("profile_key")
+                    .remove("biometric_enabled")
+                    .apply()
                 auth.signOut()
                 Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show()
-                navigateToSignup()
+                navigateToLogin()
             }
             .setNegativeButton("No", null)
             .show()
     }
 
-    private fun navigateToSignup() {
-        val intent = Intent(this, SignupActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+    private fun navigateToLogin() {
+        val i = Intent(this, LoginActivity::class.java)
+        i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(i)
         finish()
     }
 
+    // ---------- Language ----------
     private fun setupLanguageSpinner() {
         val languages = listOf("English", "हिंदी (Hindi)", "اردو (Urdu)", "العربية (Arabic)", "বাংলা (Bangla)")
-        val languageCodes = listOf("en", "hi", "ur", "ar", "bn")
+        val codes = listOf("en", "hi", "ur", "ar", "bn")
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, languages)
-        drawerBinding.spinnerLanguage.adapter = adapter
+        drawerBinding.spinnerLanguage.adapter =
+            ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, languages)
 
-        val currentLocales = AppCompatDelegate.getApplicationLocales()
-        val activeCode = if (!currentLocales.isEmpty) {
-            currentLocales[0]?.language ?: "en"
-        } else {
-            "en"
-        }
-
-        val currentIndex = languageCodes.indexOf(activeCode).let { if (it == -1) 0 else it }
-        drawerBinding.spinnerLanguage.setSelection(currentIndex, false)
+        val cur = AppCompatDelegate.getApplicationLocales()
+        val activeCode = if (!cur.isEmpty) cur[0]?.language ?: "en" else "en"
+        drawerBinding.spinnerLanguage.setSelection(codes.indexOf(activeCode).let { if (it == -1) 0 else it }, false)
 
         drawerBinding.spinnerLanguage.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val selectedCode = languageCodes[position]
-
-                val nowActiveLocale = AppCompatDelegate.getApplicationLocales()
-                val nowActiveCode = if (!nowActiveLocale.isEmpty) nowActiveLocale[0]?.language else "en"
-
-                if (selectedCode != nowActiveCode) {
-                    val appLocale = LocaleListCompat.forLanguageTags(selectedCode)
-                    AppCompatDelegate.setApplicationLocales(appLocale)
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, position: Int, id: Long) {
+                val sel = codes[position]
+                val now = AppCompatDelegate.getApplicationLocales()
+                val nowCode = if (!now.isEmpty) now[0]?.language else "en"
+                if (sel != nowCode) {
+                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(sel))
                 }
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onNothingSelected(p: AdapterView<*>?) {}
         }
     }
 
+    // ---------- Profile / dashboard ----------
     private fun loadProfileAndDashboard() {
-        val uid = auth.currentUser?.uid ?: return
+        val key = profileKey() ?: return
 
         lifecycleScope.launch {
             try {
-                val doc = db.collection("users").document(uid).get().await()
-                val profile = doc.toObject(UserProfile::class.java) ?: return@launch
+                if (auth.currentUser == null) auth.signInAnonymously().await()
+
+                val doc = db.collection("users").document(key).get().await()
+                val profile = doc.toObject(UserProfile::class.java)
+                if (profile == null) {
+                    Toast.makeText(this@MainActivity, "Account not found. Please log in again.", Toast.LENGTH_LONG).show()
+                    getSharedPreferences("app_prefs", MODE_PRIVATE).edit().remove("profile_key").apply()
+                    navigateToLogin()
+                    return@launch
+                }
                 currentProfile = profile
 
                 drawerBinding.tvDrawerName.text = profile.name
                 drawerBinding.tvDrawerMobile.text = profile.mobile
                 drawerBinding.tvDrawerDriverNo.text = "Driver No: ${profile.driverId}"
+                showProfilePicture(profile.profilePicBase64)
 
-                if (profile.taxiTypeEnum() == TaxiType.AIRPORT_TAXI) {
-                    drawerBinding.rbDrawerAirportTaxi.isChecked = true
-                } else {
-                    drawerBinding.rbDrawerShiftTaxi.isChecked = true
-                }
+                if (profile.taxiTypeEnum() == TaxiType.AIRPORT_TAXI) drawerBinding.rbDrawerAirportTaxi.isChecked = true
+                else drawerBinding.rbDrawerShiftTaxi.isChecked = true
 
-                val biometricOn = getSharedPreferences("app_prefs", MODE_PRIVATE)
-                    .getBoolean("biometric_enabled", false)
-                drawerBinding.switchBiometric.isChecked = biometricOn
+                drawerBinding.switchBiometric.isChecked =
+                    getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("biometric_enabled", false)
 
                 val now = System.currentTimeMillis()
                 val trialActive = profile.trialExpiryMillis > now
-                val subscriptionActive = profile.subscriptionExpiryMillis > now
+                val subActive = profile.subscriptionExpiryMillis > now
 
-                if (!trialActive && !subscriptionActive) {
+                if (!trialActive && !subActive) {
                     startActivity(Intent(this@MainActivity, PaywallActivity::class.java))
                     finish()
                     return@launch
                 }
-
-                if (trialActive && !subscriptionActive) {
-                    val daysLeft = (profile.trialExpiryMillis - now) / (24 * 60 * 60 * 1000)
+                if (trialActive && !subActive) {
+                    val daysLeft = (profile.trialExpiryMillis - now) / (24L * 60 * 60 * 1000)
                     if (daysLeft in 0..5) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Your free trial will expire in $daysLeft days",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        Toast.makeText(this@MainActivity, "Your free trial will expire in $daysLeft days", Toast.LENGTH_LONG).show()
                     }
                 }
-                loadCurrentPeriodShifts(uid, profile.taxiTypeEnum())
-
+                loadCurrentPeriodShifts(key, profile.taxiTypeEnum())
+                if (!UpdateChecker.check(this@MainActivity)) {
+                    NoticeHelper.checkAndShow(this@MainActivity)
+                }
             } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, "Failed to load profile: ${e.message}", Toast.LENGTH_LONG).show()
+                // ignore
             }
         }
     }
 
-    private fun updateTaxiType(taxiType: TaxiType) {
-        val uid = auth.currentUser?.uid ?: return
-        db.collection("users").document(uid).update("taxiType", taxiType.name)
+    private fun updateTaxiType(t: TaxiType) {
+        val key = profileKey() ?: return
+        db.collection("users").document(key).update("taxiType", t.name)
     }
 
     private fun currentPeriodRange(): Pair<Calendar, Calendar> {
         val now = Calendar.getInstance()
         val start = Calendar.getInstance()
         val end = Calendar.getInstance()
-
         if (now.get(Calendar.DAY_OF_MONTH) >= 21) {
             start.set(Calendar.DAY_OF_MONTH, 21)
             end.add(Calendar.MONTH, 1)
@@ -401,7 +352,7 @@ class MainActivity : AppCompatActivity() {
         return Pair(start, end)
     }
 
-    private fun loadCurrentPeriodShifts(uid: String, taxiType: TaxiType) {
+    private fun loadCurrentPeriodShifts(key: String, taxiType: TaxiType) {
         val (start, end) = currentPeriodRange()
         currentPeriodStart = start
         currentPeriodEnd = end
@@ -409,20 +360,14 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val snapshot = db.collection("users").document(uid)
-                    .collection("shifts")
-                    .get()
-                    .await()
-
+                val snapshot = db.collection("users").document(key).collection("shifts").get().await()
                 val records = snapshot.toObjects(ShiftRecord::class.java)
 
-                val inRange = records.filter { record ->
+                val inRange = records.filter { r ->
                     try {
-                        val d = sdf.parse(record.dateString)
+                        val d = sdf.parse(r.dateString)
                         d != null && !d.before(start.time) && !d.after(end.time)
-                    } catch (e: Exception) {
-                        false
-                    }
+                    } catch (e: Exception) { false }
                 }
 
                 val summary = SalaryCalculator.calculatePeriod(inRange, taxiType)
@@ -433,57 +378,52 @@ class MainActivity : AppCompatActivity() {
                 binding.tvCurrentTarget.text =
                     "➤ Achieved Target %%: %.1f%% (%.0f AED)".format(summary.currentTargetPercent, summary.finalSalary)
 
-                binding.tvNextTarget.text = if (summary.nextTargetPercent != null && summary.aedNeededPerDayForNextTarget != null) {
-                    "➤ For the next target (%.1f%%) you need per day: +%.0f AED".format(
-                        summary.nextTargetPercent, summary.aedNeededPerDayForNextTarget
-                    )
-                } else {
-                    "You're at the highest target level!"
-                }
+                binding.tvNextTarget.text =
+                    if (summary.nextTargetPercent != null && summary.aedNeededPerDayForNextTarget != null) {
+                        "➤ For the next target (%.1f%%) earn %.0f AED Clean Money per day (next %d days)".format(
+                            summary.nextTargetPercent,
+                            summary.aedNeededPerDayForNextTarget,
+                            summary.remainingWorkDays
+                        )
+                    } else "You're at the highest target level!"
 
-                // Daily Breakdown
+                // Daily breakdown: newest 3 only (sorted by real date)
                 binding.dailyContainer.removeAllViews()
-
                 if (summary.dayResults.isEmpty()) {
-                    val emptyTv = TextView(this@MainActivity).apply {
+                    binding.dailyContainer.addView(TextView(this@MainActivity).apply {
                         text = "No shifts added yet in this period"
                         textSize = 14f
                         setTextColor(0xFF888888.toInt())
                         setPadding(0, 12, 0, 12)
-                    }
-                    binding.dailyContainer.addView(emptyTv)
+                    })
                 } else {
-                    val sortedNewestFirst = summary.dayResults.sortedByDescending { it.record.dateString }
+                    val newest3 = summary.dayResults
+                        .sortedByDescending { sdf.parse(it.record.dateString)?.time ?: 0L }
+                        .take(3)
 
-                    sortedNewestFirst.forEach { day ->
+                    newest3.forEach { day ->
                         val row = LinearLayout(this@MainActivity).apply {
                             orientation = LinearLayout.HORIZONTAL
                             setPadding(16, 14, 16, 14)
-                            setBackgroundColor(0xFFF8F9FC.toInt())
+                            setBackgroundColor(0xFF232E63.toInt())
                             layoutParams = LinearLayout.LayoutParams(
                                 LinearLayout.LayoutParams.MATCH_PARENT,
                                 LinearLayout.LayoutParams.WRAP_CONTENT
-                            ).apply {
-                                setMargins(0, 0, 0, 8)
-                            }
+                            ).apply { setMargins(0, 0, 0, 8) }
                         }
-
-                        val dateTv = TextView(this@MainActivity).apply {
+                        row.addView(TextView(this@MainActivity).apply {
                             text = day.record.dateString
+                            setTextColor(0xFFFFFFFF.toInt())
                             textSize = 14f
                             setTypeface(typeface, android.graphics.Typeface.BOLD)
                             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                        }
-
-                        val moneyTv = TextView(this@MainActivity).apply {
+                        })
+                        row.addView(TextView(this@MainActivity).apply {
                             text = "%.0f AED".format(day.cleanMoney)
                             textSize = 14f
-                            setTextColor(0xFF1A237E.toInt())
+                            setTextColor(0xFFE6CF9E.toInt())
                             gravity = android.view.Gravity.END
-                        }
-
-                        row.addView(dateTv)
-                        row.addView(moneyTv)
+                        })
                         binding.dailyContainer.addView(row)
                     }
                 }
@@ -496,15 +436,44 @@ class MainActivity : AppCompatActivity() {
                         .setPositiveButton("OK", null)
                         .show()
                 }
-
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, "Failed to load data: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
 
+    // ---------- ⋮ menu → full month popup ----------
+    private fun showCurrentMonthPopup(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add("View Current Month Details")
+        popup.setOnMenuItemClickListener {
+            openFullPeriodDetails()
+            true
+        }
+        popup.show()
+    }
+
+    private fun openFullPeriodDetails() {
+        val summary = currentSummary
+        val start = currentPeriodStart
+        val end = currentPeriodEnd
+        if (summary == null || start == null || end == null) {
+            Toast.makeText(this, "No data yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        PeriodDetailActivity.daysList = summary.dayResults
+        startActivity(Intent(this, PeriodDetailActivity::class.java).apply {
+            putExtra("periodStart", sdf.format(start.time))
+            putExtra("periodEnd", sdf.format(end.time))
+            putExtra("totalClean", summary.totalCleanMoney)
+            putExtra("finalSalary", summary.finalSalary)
+            putExtra("targetPercent", summary.currentTargetPercent)
+        })
+    }
+
+    // ---------- Finalize ----------
     private fun finalizeCurrentPeriod() {
-        val uid = auth.currentUser?.uid ?: return
+        val key = profileKey() ?: return
         val profile = currentProfile ?: return
         val summary = currentSummary
         val start = currentPeriodStart
@@ -516,7 +485,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         val reportId = "${sdf.format(start.time)}_${sdf.format(end.time)}"
-
         val report = Report(
             reportId = reportId,
             periodStart = sdf.format(start.time),
@@ -535,87 +503,126 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                db.collection("users").document(uid)
-                    .collection("reports").document(reportId)
-                    .set(report).await()
-
+                db.collection("users").document(key).collection("reports").document(reportId).set(report).await()
                 AlertDialog.Builder(this@MainActivity)
                     .setTitle("Saved ✅")
                     .setMessage("Report for this period has been saved. You can view it from 'View Saved Reports'.")
                     .setPositiveButton("OK", null)
                     .show()
-
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, "Failed to save report: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    private fun shareAppAsApk() {
-        try {
-            val originalApk = File(applicationInfo.sourceDir)
-            val destFile = File(cacheDir, "TargetAchieve.apk")
-
-            if (destFile.exists()) destFile.delete()
-            originalApk.copyTo(destFile, overwrite = true)
-
-            val uri = FileProvider.getUriForFile(
-                this,
-                "${packageName}.fileprovider",
-                destFile
-            )
-
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/vnd.android.package-archive"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_TEXT, "Install Target Achieve App")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    // ---------- Profile picture ----------
+    private fun chooseProfilePictureSource() {
+        AlertDialog.Builder(this)
+            .setTitle("Profile Picture")
+            .setItems(arrayOf("📷 Take Photo", "🖼️ Choose from Gallery")) { _, which ->
+                if (which == 0) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+                        launchPicCamera()
+                    else picCameraPermission.launch(Manifest.permission.CAMERA)
+                } else {
+                    picGalleryLauncher.launch("image/*")
+                }
             }
-            startActivity(Intent.createChooser(intent, "Share App APK via"))
+            .show()
+    }
+
+    private fun launchPicCamera() {
+        try {
+            val f = File(cacheDir, "profile_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", f)
+            picCameraUri = uri
+            picCameraLauncher.launch(uri)
         } catch (e: Exception) {
-            Toast.makeText(this, "Failed to share APK: ${e.message}", Toast.LENGTH_LONG).show()
-            e.printStackTrace()
+            Toast.makeText(this, "Camera error: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
+    private fun saveProfilePicture(uri: Uri) {
+        val key = profileKey() ?: return
+        try {
+            val original = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) } ?: return
+            val side = minOf(original.width, original.height)
+            val square = Bitmap.createBitmap(original, (original.width - side) / 2, (original.height - side) / 2, side, side)
+            val small = Bitmap.createScaledBitmap(square, 200, 200, true)
+            val out = ByteArrayOutputStream()
+            small.compress(Bitmap.CompressFormat.JPEG, 80, out)
+            val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+
+            drawerBinding.ivProfilePic.setImageBitmap(small)
+            lifecycleScope.launch {
+                try {
+                    db.collection("users").document(key).update("profilePicBase64", b64).await()
+                    Toast.makeText(this@MainActivity, "Profile picture saved ✅", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this@MainActivity, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not load image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showProfilePicture(b64: String) {
+        if (b64.isEmpty()) return
+        try {
+            val bytes = Base64.decode(b64, Base64.NO_WRAP)
+            drawerBinding.ivProfilePic.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+        } catch (_: Exception) { }
+    }
+
+    // ---------- Share app (always the currently installed APK) ----------
+    private fun shareAppAsApk() {
+        try {
+            val original = File(applicationInfo.sourceDir)
+            val dest = File(cacheDir, "TargetAchieve.apk")
+            if (dest.exists()) dest.delete()
+            original.copyTo(dest, overwrite = true)
+
+            val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", dest)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/vnd.android.package-archive"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_TEXT, "I'm using the \"TARGET ACHIEVE\" app. You should try it too to hit your targets!")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Share App via"))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to share APK: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // ---------- Biometric ----------
     private fun showBiometricPrompt() {
         val executor: Executor = ContextCompat.getMainExecutor(this)
-
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 super.onAuthenticationSucceeded(result)
                 loadProfileAndDashboard()
             }
-
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                 super.onAuthenticationError(errorCode, errString)
-                if (errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
-                    errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON
-                ) {
-                    finish()
-                } else {
+                if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
                     Toast.makeText(this@MainActivity, "Authentication error: $errString", Toast.LENGTH_SHORT).show()
-                    finish()
                 }
+                finish()
             }
-
             override fun onAuthenticationFailed() {
                 super.onAuthenticationFailed()
                 Toast.makeText(this@MainActivity, "Fingerprint / Face not recognized", Toast.LENGTH_SHORT).show()
             }
         }
-
-        val biometricPrompt = BiometricPrompt(this, executor, callback)
-
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Target Achieve Lock")
             .setSubtitle("Verify your identity to open the app")
             .setAllowedAuthenticators(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
             .build()
-
-        biometricPrompt.authenticate(promptInfo)
+        BiometricPrompt(this, executor, callback).authenticate(info)
     }
 }

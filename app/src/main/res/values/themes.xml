@@ -1,9 +1,21 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.TargetAchieve" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
     <style name="Theme.TargetAchieve" parent="Base.Theme.TargetAchieve" />
+
+    <!-- নতুন গ্রাফাইট + ইঙ্কি ব্লু + শ্যাম্পেন থিম (Main, AddShift, PeriodDetail স্ক্রিনে) -->
+    <style name="Theme.TargetAchieve.Dark" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/ta_champagne</item>
+        <item name="colorOnPrimary">@color/ta_graphite</item>
+        <item name="colorSurface">@color/ta_inky_blue</item>
+        <item name="colorOnSurface">@color/ta_white</item>
+        <item name="android:colorBackground">@color/ta_graphite</item>
+        <item name="android:windowBackground">@color/ta_graphite</item>
+        <item name="android:statusBarColor">@color/ta_graphite</item>
+        <item name="android:navigationBarColor">@color/ta_graphite</item>
+        <item name="android:textColorPrimary">@color/ta_white</item>
+        <item name="android:textColorSecondary">#CCFFFFFF</item>
+    </style>
 </resources>

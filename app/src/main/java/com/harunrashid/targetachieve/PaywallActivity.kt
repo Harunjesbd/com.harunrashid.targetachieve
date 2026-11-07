@@ -49,12 +49,14 @@ class PaywallActivity : AppCompatActivity() {
     }
 
     private fun activateKey(key: String) {
-        val uid = auth.currentUser?.uid ?: return
+        val uid = profileKey() ?: return
         binding.progressBar.visibility = View.VISIBLE
         binding.btnActivate.isEnabled = false
 
         lifecycleScope.launch {
             try {
+                if (auth.currentUser == null) auth.signInAnonymously().await()
+
                 val keyDoc = db.collection("serialKeys").document(key).get().await()
 
                 if (!keyDoc.exists()) {

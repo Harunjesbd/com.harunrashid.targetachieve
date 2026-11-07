@@ -35,7 +35,7 @@ class ReportDetailActivity : AppCompatActivity() {
     }
 
     private fun loadReport(reportId: String) {
-        val uid = auth.currentUser?.uid ?: return
+        val uid = profileKey() ?: return
 
         lifecycleScope.launch {
             try {
@@ -60,7 +60,7 @@ class ReportDetailActivity : AppCompatActivity() {
             "➤ Achieved Target %%: %.1f%% (%.0f AED)".format(report.achievedTargetPercent, report.finalSalary)
 
         binding.tvNextTarget.text = if (report.nextTargetPercent > 0) {
-            "For the next target (%.1f%%) you need per day: +%.0f AED".format(
+            "For the next target (%.1f%%) you need Clean Money per day: %.0f AED".format(
                 report.nextTargetPercent, report.aedNeededPerDayForNextTarget
             )
         } else {

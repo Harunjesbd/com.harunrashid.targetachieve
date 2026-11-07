@@ -1,0 +1,4 @@
+<resources>
+    <string name="driver_guide_title">📖 Driver Guide</string>
+    <string name="driver_guide_text">1. Sign up with Name, Driver No and Mobile. To come back later, use Log In with the same three details.\n\n2. Home shows the current period (21st to 20th).\n\n3. Tap \"+ ADD TODAY\'S SHIFT SUMMARY\", take a photo or choose from Gallery, keep the receipt straight and in bright light, check the numbers, then Save.\n\n4. Home shows Total Clean Money, Salary and the latest 3 days. Tap ⋮ for the full month.\n\n5. After the 20th tap \"Finalize &amp; Save This Period\" to save the report.\n\n6. Old reports are in \"View Saved Reports\".\n\n7. Use Biometric Lock for security and change language from the menu.\n\n8. For help use WhatsApp or Email in the Support section.</string>
+</resources>

@@ -23,6 +23,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.harunrashid.targetachieve.databinding.ActivityAddShiftBinding
+import com.harunrashid.targetachieve.logic.MlKitOcrHelper
 import com.harunrashid.targetachieve.logic.ShiftTextParser
 import com.harunrashid.targetachieve.models.ShiftRecord
 import kotlinx.coroutines.launch
@@ -186,10 +187,10 @@ class AddShiftActivity : AppCompatActivity() {
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
-                val mlKitText = visionText.text
+                // MlKitOcrHelper ব্যবহার করে সারিগুলো পজিশন অনুযায়ী পুনরায় জোড়া দেওয়া হচ্ছে
+                val mlKitText = MlKitOcrHelper.reconstructRows(visionText)
                 val dateString = sdf.format(selectedDate.time)
 
-                // ===== TEMPORARY DEBUG =====
                 Log.d("OCR_RAW", "===== START =====\n$mlKitText\n===== END =====")
 
                 AlertDialog.Builder(this)
@@ -209,7 +210,6 @@ class AddShiftActivity : AppCompatActivity() {
                     }
                     .setCancelable(false)
                     .show()
-                // ===== END TEMPORARY =====
             }
             .addOnFailureListener { e ->
                 binding.progressBar.visibility = View.GONE
@@ -221,22 +221,22 @@ class AddShiftActivity : AppCompatActivity() {
     }
 
     private fun fillForm(record: ShiftRecord) {
-        binding.etPlateNo.setText(record.plateNo)
-        binding.etShiftTotal.setText(if (record.shiftTotal != 0.0) record.shiftTotal.toString() else "")
-        binding.etTotalSharjah.setText(if (record.totalSharjah != 0.0) record.totalSharjah.toString() else "")
-        binding.etTotalTollways.setText(if (record.totalTollways != 0.0) record.totalTollways.toString() else "")
-        binding.etShiftTrips.setText(if (record.shiftTrips != 0) record.shiftTrips.toString() else "")
-        binding.etBookings.setText(if (record.bookings != 0) record.bookings.toString() else "")
-        binding.etAirportTrips.setText(if (record.airportTrips != 0) record.airportTrips.toString() else "")
-        binding.etKmHired.setText(if (record.kmHired != 0.0) record.kmHired.toString() else "")
-        binding.etKmVacant.setText(if (record.kmVacant != 0.0) record.kmVacant.toString() else "")
-        binding.etPaidInCareem.setText(if (record.paidInCareem != 0.0) record.paidInCareem.toString() else "")
-        binding.etHalaPeak.setText(if (record.halaPeak != 0.0) record.halaPeak.toString() else "")
-        binding.etTips.setText(if (record.tips != 0.0) record.tips.toString() else "")
+        binding.etPlateNo.setText(record.driverNo)
+        binding.etShiftTotal.setText(record.shiftTotal.toString())
+        binding.etTotalSharjah.setText(record.totalSharjah.toString())
+        binding.etTotalTollways.setText(record.totalTollways.toString())
+        binding.etShiftTrips.setText(record.shiftTrips.toString())
+        binding.etBookings.setText(record.bookings.toString())
+        binding.etAirportTrips.setText(record.airportTrips.toString())
+        binding.etKmHired.setText(record.kmHired.toString())
+        binding.etKmVacant.setText(record.kmVacant.toString())
+        binding.etPaidInCareem.setText(record.paidInCareem.toString())
+        binding.etHalaPeak.setText(record.halaPeak.toString())
+        binding.etTips.setText(record.tips.toString())
     }
 
     private fun saveShift() {
-        val uid = auth.currentUser?.uid
+        val uid = profileKey()
         if (uid == null) {
             Toast.makeText(this, "Login problem, please try again", Toast.LENGTH_SHORT).show()
             return
@@ -246,7 +246,7 @@ class AddShiftActivity : AppCompatActivity() {
 
         val record = ShiftRecord(
             dateString = dateString,
-            plateNo = binding.etPlateNo.text.toString().trim(),
+            driverNo = binding.etPlateNo.text.toString().trim(),
             shiftTotal = binding.etShiftTotal.text.toString().toDoubleOrNull() ?: 0.0,
             totalSharjah = binding.etTotalSharjah.text.toString().toDoubleOrNull() ?: 0.0,
             totalTollways = binding.etTotalTollways.text.toString().toDoubleOrNull() ?: 0.0,

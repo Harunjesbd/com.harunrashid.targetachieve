@@ -31,7 +31,7 @@ class ReportsActivity : AppCompatActivity() {
     }
 
     private fun loadReports() {
-        val uid = auth.currentUser?.uid ?: return
+        val uid = profileKey() ?: return
 
         lifecycleScope.launch {
             try {

@@ -2,7 +2,7 @@ package com.harunrashid.targetachieve.models
 
 data class ShiftRecord(
     val dateString: String = "",
-    val plateNo: String = "",
+    val driverNo: String = "",
     val startTime: String = "",
     val finishTime: String = "",
 

@@ -12,8 +12,8 @@ android {
         applicationId = "com.harunrashid.targetachieve"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -47,6 +47,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 
     // Firebase (Firestore & Auth)
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))

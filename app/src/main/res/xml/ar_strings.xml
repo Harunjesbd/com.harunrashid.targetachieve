@@ -10,4 +10,6 @@
     <string name="share_app">مشاركة التطبيق</string>
     <string name="support">الدعم</string>
     <string name="admin_panel">🔒 لوحة المسؤول</string>
+    <string name="label_driver_id">رقم السائق</string>
+    <string name="hint_driver_id">أدخل رقم السائق</string>
 </resources>

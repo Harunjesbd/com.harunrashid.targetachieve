@@ -1,45 +1,43 @@
 package com.harunrashid.targetachieve.logic
 
-data class SlabRow(
-    val percent: Double,
-    val minAed: Double,
-    val maxAed: Double
-)
+/**
+ * কমিশন স্ল্যাবের টেবিল। কোম্পানি স্ল্যাব বদলালে শুধু TABLE-এর সারি বদলান।
+ * প্রতিটি সারি: SlabRow(কমিশন%, দৈনিক গড়ের সর্বনিম্ন AED, সর্বোচ্চ AED)
+ */
+data class SlabRow(val percent: Double, val minAed: Double, val maxAed: Double)
 
 object CommissionSlab {
 
-    val TABLE = listOf(
-        SlabRow(5.00, 95.00, 139.99),
-        SlabRow(7.50, 140.00, 164.99),
-        SlabRow(10.00, 165.00, 189.99),
-        SlabRow(12.50, 190.00, 214.99),
-        SlabRow(15.00, 215.00, 239.99),
-        SlabRow(17.50, 240.00, 264.99),
-        SlabRow(20.00, 265.00, 289.99),
-        SlabRow(22.50, 290.00, 314.99),
-        SlabRow(25.00, 315.00, 339.99),
-        SlabRow(27.50, 340.00, 369.99),
-        SlabRow(30.00, 370.00, 394.99),
-        SlabRow(32.50, 395.00, 419.99),
-        SlabRow(35.00, 420.00, 534.99),
-        SlabRow(36.00, 535.00, 649.99),
-        SlabRow(37.00, 650.00, 799.99)
+    val TABLE: List<SlabRow> = listOf(
+        SlabRow(5.0,   95.0,  139.99),
+        SlabRow(7.5,  140.0,  164.99),
+        SlabRow(10.0, 165.0,  189.99),
+        SlabRow(12.5, 190.0,  214.99),
+        SlabRow(15.0, 215.0,  239.99),
+        SlabRow(17.5, 240.0,  264.99),
+        SlabRow(20.0, 265.0,  289.99),
+        SlabRow(22.5, 290.0,  314.99),
+        SlabRow(25.0, 315.0,  339.99),
+        SlabRow(27.5, 340.0,  369.99),
+        SlabRow(30.0, 370.0,  394.99),
+        SlabRow(32.5, 395.0,  419.99),
+        SlabRow(35.0, 420.0,  534.99),
+        SlabRow(36.0, 535.0,  649.99),
+        SlabRow(37.0, 650.0,  799.99)
     )
 
+    /** দৈনিক গড় অনুযায়ী কমিশন %। প্রথম স্ল্যাবের নিচে হলে 0 */
     fun percentFor(amount: Double): Double {
-        if (amount < TABLE.first().minAed) return 0.0
+        var result = 0.0
         for (row in TABLE) {
-            if (amount in row.minAed..row.maxAed) return row.percent
+            if (amount >= row.minAed) result = row.percent
         }
-        return TABLE.last().percent
+        return result
     }
 
+    /** পরের স্ল্যাব: Pair(কমিশন%, কত AED গড় লাগবে)। শেষ স্ল্যাবে থাকলে null */
     fun nextSlab(currentAmount: Double): Pair<Double, Double>? {
-        val currentPercent = percentFor(currentAmount)
-        val currentIndex = TABLE.indexOfFirst { it.percent == currentPercent }
-        val nextIndex = currentIndex + 1
-        if (nextIndex >= TABLE.size) return null
-        val next = TABLE[nextIndex]
+        val next = TABLE.firstOrNull { it.minAed > currentAmount } ?: return null
         return Pair(next.percent, next.minAed)
     }
 }

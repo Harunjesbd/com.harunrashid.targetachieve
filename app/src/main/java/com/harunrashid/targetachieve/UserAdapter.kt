@@ -1,88 +1,73 @@
-package com.harunrashid.targetachieve;
+package com.harunrashid.targetachieve
 
-import android.graphics.Color;
-import android.text.format.DateFormat;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
+import java.util.Locale
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.RecyclerView;
+class UserAdapter(private var items: List<UserModel>) : RecyclerView.Adapter<UserAdapter.VH>() {
 
-import com.google.firebase.firestore.FirebaseFirestore;
+    private val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
 
-import java.util.List;
-
-public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
-
-    private List<UserModel> userList;
-    private FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-    public UserAdapter(List<UserModel> userList) {
-        this.userList = userList;
+    class VH(v: android.view.View) : RecyclerView.ViewHolder(v) {
+        val name: TextView = v.findViewById(R.id.tvAdminName)
+        val mobile: TextView = v.findViewById(R.id.tvAdminMobile)
+        val driver: TextView = v.findViewById(R.id.tvAdminDriver)
+        val status: TextView = v.findViewById(R.id.tvAdminStatus)
+        val expires: TextView = v.findViewById(R.id.tvAdminExpires)
+        val add30: Button = v.findViewById(R.id.btnAdd30)
     }
 
-    @NonNull
-    @Override
-    public UserViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_user, parent, false);
-        return new UserViewHolder(view);
+    fun submit(list: List<UserModel>) {
+        items = list
+        notifyDataSetChanged()
     }
 
-    @Override
-    public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
-        UserModel user = userList.get(position);
-        long currentTime = System.currentTimeMillis();
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
+        VH(LayoutInflater.from(parent.context).inflate(R.layout.item_admin_user, parent, false))
 
-        long expiryTime = Math.max(user.getTrialExpiryMillis(), user.getSubscriptionExpiryMillis());
-        boolean isActive = expiryTime > currentTime;
+    override fun getItemCount() = items.size
 
-        holder.tvUserId.setText("ID: " + user.getUserId());
+    override fun onBindViewHolder(h: VH, position: Int) {
+        val u = items[position]
+        val now = System.currentTimeMillis()
+        h.name.text = "👤 ${u.name}"
+        h.mobile.text = "📱 ${u.mobile}"
+        h.driver.text = "🚕 Driver No: ${u.driverId}   |   ID: ${u.id}"
 
-        if (isActive) {
-            holder.tvUserStatus.setText("Status: ACTIVE 🟢");
-            holder.tvUserStatus.setTextColor(Color.parseColor("#388E3C"));
-        } else {
-            holder.tvUserStatus.setText("Status: EXPIRED / INACTIVE 🔴");
-            holder.tvUserStatus.setTextColor(Color.RED);
+        val subActive = u.subscriptionExpiryMillis > now
+        val trialActive = u.trialExpiryMillis > now
+        val (label, expiry) = when {
+            subActive -> "PAID" to u.subscriptionExpiryMillis
+            trialActive -> "TRIAL" to u.trialExpiryMillis
+            else -> "EXPIRED" to maxOf(u.trialExpiryMillis, u.subscriptionExpiryMillis)
         }
-
-        String dateString = DateFormat.format("dd/MM/yyyy hh:mm a", expiryTime).toString();
-        holder.tvExpiryDate.setText("Expires on: " + dateString);
-
-        holder.btnExtendValidity.setOnClickListener(v -> {
-            long newExpiry;
-            if (isActive) {
-                newExpiry = expiryTime + (30L * 24 * 60 * 60 * 1000);
-            } else {
-                newExpiry = currentTime + (30L * 24 * 60 * 60 * 1000);
+        h.status.text = "Status: $label"
+        h.status.setTextColor(
+            when (label) {
+                "PAID" -> 0xFF2E7D32.toInt()
+                "TRIAL" -> 0xFF1565C0.toInt()
+                else -> 0xFFD32F2F.toInt()
             }
+        )
+        h.expires.text = "Expires: " + (if (expiry > 0) sdf.format(expiry) else "-")
 
-            db.collection("users").document(user.getUserId())
-                    .update("subscriptionExpiryMillis", newExpiry)
-                    .addOnSuccessListener(aVoid -> Toast.makeText(v.getContext(), "Updated +30 days!", Toast.LENGTH_SHORT).show())
-                    .addOnFailureListener(e -> Toast.makeText(v.getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-        });
-    }
-
-    @Override
-    public int getItemCount() {
-        return userList.size();
-    }
-
-    static class UserViewHolder extends RecyclerView.ViewHolder {
-        TextView tvUserId, tvUserStatus, tvExpiryDate;
-        Button btnExtendValidity;
-
-        public UserViewHolder(@NonNull View itemView) {
-            super(itemView);
-            tvUserId = itemView.findViewById(R.id.tvUserId);
-            tvUserStatus = itemView.findViewById(R.id.tvUserStatus);
-            tvExpiryDate = itemView.findViewById(R.id.tvExpiryDate);
-            btnExtendValidity = itemView.findViewById(R.id.btnExtendValidity);
+        h.add30.setOnClickListener {
+            val base = maxOf(u.subscriptionExpiryMillis, now)
+            val newExpiry = base + 30L * 24 * 60 * 60 * 1000
+            FirebaseFirestore.getInstance().collection("users").document(u.id)
+                .update("subscriptionExpiryMillis", newExpiry)
+                .addOnSuccessListener {
+                    Toast.makeText(h.itemView.context, "30 days added ✅", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener {
+                    Toast.makeText(h.itemView.context, "Failed: ${it.message}", Toast.LENGTH_LONG).show()
+                }
         }
     }
 }

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
@@ -21,106 +22,100 @@ class SignupActivity : AppCompatActivity() {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
-    private val adminEmail = "admininfo.bd@gmail.com"
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySignupBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.btnStart.setOnClickListener {
-            val name = binding.etName.text.toString().trim()
-            val driverId = binding.etDriverId.text.toString().trim()
-            val mobile = binding.etMobile.text.toString().trim()
-
-            if (name.isEmpty() || driverId.isEmpty() || mobile.isEmpty()) {
-                Toast.makeText(this, "Please fill in Name, Driver ID, and Mobile number", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            val taxiType = if (binding.rbAirportTaxi.isChecked) TaxiType.AIRPORT_TAXI else TaxiType.SHIFT_TAXI
-            processUserRegistration(name, driverId, mobile, taxiType)
+        if (profileKey() != null) {
+            goMain(); return
         }
+
+        binding.btnStart.setOnClickListener { signup() }
+        binding.btnGoToLogin.setOnClickListener { goLogin() }
     }
 
-    private fun getUniqueDeviceId(): String {
-        return Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown-device"
-    }
+    private fun signup() {
+        val name = binding.etName.text.toString().trim()
+        val driverNo = binding.etDriverId.text.toString().trim()
+        val mobile = binding.etMobile.text.toString().trim()
+        val key = mobileToKey(mobile)
+        val taxiType = if (binding.rbAirportTaxi.isChecked) TaxiType.AIRPORT_TAXI else TaxiType.SHIFT_TAXI
 
-    private fun processUserRegistration(name: String, driverId: String, mobile: String, taxiType: TaxiType) {
+        if (name.isEmpty() || driverNo.isEmpty() || key.length < 9) {
+            Toast.makeText(this, "Name, Driver No এবং সঠিক Mobile দিন", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         binding.progressBar.visibility = View.VISIBLE
         binding.btnStart.isEnabled = false
 
-        val deviceId = getUniqueDeviceId()
-
         lifecycleScope.launch {
             try {
-                // Ensure Firebase User Auth exists
-                if (auth.currentUser == null) {
-                    auth.signInAnonymously().await()
+                if (auth.currentUser == null) auth.signInAnonymously().await()
+
+                val ref = db.collection("users").document(key)
+                if (ref.get().await().exists()) {
+                    askGoLogin("এই মোবাইল নম্বরে আগেই অ্যাকাউন্ট আছে। Log In করুন।")
+                    return@launch
                 }
-                val uid = auth.currentUser?.uid ?: throw IllegalStateException("Authentication failed")
-                val userEmail = auth.currentUser?.email ?: ""
 
-                val isAdminAccount = userEmail.equals(adminEmail, ignoreCase = true) || name.equals(adminEmail, ignoreCase = true)
+                // অ্যাডমিন নম্বর হলে "এক ফোনে এক অ্যাকাউন্ট" নিয়ম প্রযোজ্য নয়
+                val isAdminNumber = db.collection("admins").document(key).get().await().exists()
 
-                // Perform Device Lock validation ONLY for regular drivers
-                if (!isAdminAccount) {
-                    val existingDeviceQuery = db.collection("users")
-                        .whereEqualTo("deviceId", deviceId)
-                        .get()
-                        .await()
-
-                    if (!existingDeviceQuery.isEmpty) {
-                        val registeredUser = existingDeviceQuery.documents[0].toObject(UserProfile::class.java)
-
-                        // Lock device if already bound to a different Driver ID
-                        if (registeredUser != null && registeredUser.driverId.isNotEmpty() && registeredUser.driverId != driverId) {
-                            binding.progressBar.visibility = View.GONE
-                            binding.btnStart.isEnabled = true
-                            Toast.makeText(
-                                this@SignupActivity,
-                                "Device Lock: This device is registered to Driver ID ${registeredUser.driverId}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            return@launch
-                        }
+                val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+                if (!isAdminNumber && deviceId.isNotEmpty()) {
+                    val dup = db.collection("users").whereEqualTo("deviceId", deviceId).limit(1).get().await()
+                    if (!dup.isEmpty) {
+                        askGoLogin("এই ফোনে আগেই একটি অ্যাকাউন্ট খোলা হয়েছে। Log In করুন।")
+                        return@launch
                     }
                 }
 
-                // Create or Update Driver Profile in Firestore
                 val now = System.currentTimeMillis()
                 val profile = UserProfile(
-                    uid = uid,
+                    uid = auth.currentUser?.uid ?: "",
+                    mobileKey = key,
                     name = name,
-                    driverId = driverId,
+                    driverId = driverNo,
                     mobile = mobile,
                     taxiType = taxiType.name,
                     deviceId = deviceId,
                     trialStartMillis = now,
-                    trialExpiryMillis = now + (55L * 24 * 60 * 60 * 1000), // 55 Days Trial
+                    trialExpiryMillis = now + 60L * 24 * 60 * 60 * 1000,
                     subscriptionExpiryMillis = 0L,
                     createdAtMillis = now
                 )
+                ref.set(profile).await()
 
-                db.collection("users").document(uid).set(profile).await()
-
-                binding.progressBar.visibility = View.GONE
-
-                // Redirect directly to Driver Dashboard (MainActivity)
-                val intent = Intent(this@SignupActivity, MainActivity::class.java)
-                startActivity(intent)
-                finish()
-
+                getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putString("profile_key", key).apply()
+                goMain()
             } catch (e: Exception) {
+                Toast.makeText(this@SignupActivity, "Signup failed: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
                 binding.progressBar.visibility = View.GONE
                 binding.btnStart.isEnabled = true
-                Toast.makeText(
-                    this@SignupActivity,
-                    "Error: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
             }
         }
+    }
+
+    private fun askGoLogin(msg: String) {
+        AlertDialog.Builder(this)
+            .setMessage(msg)
+            .setPositiveButton("Log In") { _, _ -> goLogin() }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun goLogin() {
+        startActivity(Intent(this, LoginActivity::class.java))
+        finish()
+    }
+
+    private fun goMain() {
+        val i = Intent(this, MainActivity::class.java)
+        i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(i)
+        finish()
     }
 }

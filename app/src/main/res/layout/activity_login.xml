@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ta_graphite"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="28dp"
+            android:gravity="center"
+            android:text="@string/ta_login_title"
+            android:textColor="@color/ta_champagne"
+            android:textSize="22sp"
+            android:textStyle="bold|italic" />
+
+        <EditText
+            android:id="@+id/etLoginName"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_edit_ta"
+            android:hint="@string/ta_login_hint_name"
+            android:importantForAutofill="no"
+            android:inputType="textPersonName"
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/ta_white"
+            android:textColorHint="#99FFFFFF"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etLoginDriverNo"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_edit_ta"
+            android:hint="@string/ta_login_hint_driver_no"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/ta_white"
+            android:textColorHint="#99FFFFFF"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etLoginMobile"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_edit_ta"
+            android:hint="@string/ta_login_hint_mobile"
+            android:importantForAutofill="no"
+            android:inputType="phone"
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/ta_white"
+            android:textColorHint="#99FFFFFF"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnLoginSubmit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:text="@string/ta_login_btn"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/btnGoToSignup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:padding="10dp"
+            android:text="@string/ta_login_to_signup"
+            android:textColor="@color/ta_champagne"
+            android:textStyle="bold" />
+    </LinearLayout>
+</ScrollView>

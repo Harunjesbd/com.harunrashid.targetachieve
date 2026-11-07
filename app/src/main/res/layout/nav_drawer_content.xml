@@ -2,17 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@color/ta_graphite"
     android:orientation="vertical">
 
     <!-- Header Section with Profile Picture -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/royal_blue"
+        android:background="@color/ta_inky_blue"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -24,8 +24,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="User profile:"
-                android:textColor="#DCE3FF"
-                android:textSize="12sp" />
+                android:textColor="@color/ta_champagne"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvDrawerName"
@@ -33,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="User Name"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/ta_white"
                 android:textSize="17sp"
                 android:textStyle="bold" />
 
@@ -43,8 +44,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="Mobile Number"
-                android:textColor="#DCE3FF"
-                android:textSize="13sp" />
+                android:textColor="@color/ta_white"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvDrawerDriverNo"
@@ -52,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="Driver No: -"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/ta_champagne"
                 android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -62,7 +64,7 @@
             android:id="@+id/btnUploadProfilePic"
             android:layout_width="70dp"
             android:layout_height="70dp"
-            android:background="#FFFFFF"
+            android:background="@drawable/bg_iconbox_ta"
             android:gravity="center"
             android:orientation="vertical"
             android:padding="4dp">
@@ -71,13 +73,12 @@
                 android:id="@+id/ivProfilePic"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
+                android:contentDescription="Profile picture"
                 android:scaleType="centerCrop"
-                android:src="@android:drawable/ic_menu_camera"
-                android:contentDescription="Profile picture" />
+                android:src="@android:drawable/ic_menu_camera" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Scrollable Content -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -89,13 +90,13 @@
             android:orientation="vertical"
             android:padding="20dp">
 
-            <!-- Taxi Type Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Taxi Type"
-                android:textColor="#666666"
-                android:textSize="12sp" />
+                android:textColor="@color/ta_champagne"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <RadioGroup
                 android:id="@+id/rgDrawerTaxiType"
@@ -109,17 +110,20 @@
                     android:id="@+id/rbDrawerShiftTaxi"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Shift" />
+                    android:text="Shift"
+                    android:textColor="@color/ta_white"
+                    android:textStyle="bold" />
 
                 <RadioButton
                     android:id="@+id/rbDrawerAirportTaxi"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="24dp"
-                    android:text="Airport" />
+                    android:text="Airport"
+                    android:textColor="@color/ta_white"
+                    android:textStyle="bold" />
             </RadioGroup>
 
-            <!-- Biometric Lock Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -132,7 +136,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Biometric Lock"
-                    android:textSize="14sp" />
+                    android:textColor="@color/ta_white"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/switchBiometric"
@@ -140,14 +146,14 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
-            <!-- Language Selection -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:text="Language / भाषा / زبان / اللغة"
-                android:textColor="#666666"
-                android:textSize="12sp" />
+                android:textColor="@color/ta_champagne"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <Spinner
                 android:id="@+id/spinnerLanguage"
@@ -159,9 +165,19 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginBottom="12dp"
-                android:background="#EEEEEE" />
+                android:background="@color/ta_inky_border" />
 
-            <!-- Driver Guide (NEW) -->
+            <TextView
+                android:id="@+id/btnEditProfile"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:padding="8dp"
+                android:text="✏️ Edit Profile"
+                android:textColor="@color/ta_white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
             <TextView
                 android:id="@+id/btnDriverGuide"
                 android:layout_width="match_parent"
@@ -169,10 +185,10 @@
                 android:layout_marginBottom="12dp"
                 android:padding="8dp"
                 android:text="📖 Driver Guide"
+                android:textColor="@color/ta_white"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
-            <!-- Share App -->
             <TextView
                 android:id="@+id/btnShareApp"
                 android:layout_width="match_parent"
@@ -180,21 +196,23 @@
                 android:layout_marginBottom="16dp"
                 android:padding="8dp"
                 android:text="Share This App"
-                android:textSize="14sp" />
+                android:textColor="@color/ta_white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginBottom="16dp"
-                android:background="#EEEEEE" />
+                android:background="@color/ta_inky_border" />
 
-            <!-- Support Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Support"
-                android:textColor="#666666"
-                android:textSize="12sp" />
+                android:textColor="@color/ta_champagne"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/btnWhatsAppSupport"
@@ -203,7 +221,9 @@
                 android:layout_marginTop="8dp"
                 android:padding="8dp"
                 android:text="WhatsApp: +971 55 233 5930"
-                android:textSize="14sp" />
+                android:textColor="@color/ta_white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/btnEmailSupport"
@@ -211,22 +231,7 @@
                 android:layout_height="wrap_content"
                 android:padding="8dp"
                 android:text="Email: admininfo.bd@gmail.com"
-                android:textSize="14sp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"
-                android:background="#EEEEEE" />
-
-            <TextView
-                android:id="@+id/btnAdminPanel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:text="🔒 Admin Panel"
-                android:textColor="#FF0000"
+                android:textColor="@color/ta_white"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
@@ -235,7 +240,24 @@
                 android:layout_height="1dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="16dp"
-                android:background="#EEEEEE" />
+                android:background="@color/ta_inky_border" />
+
+            <TextView
+                android:id="@+id/btnAdminPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="🔒 Admin Panel"
+                android:textColor="#FF6B6B"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="@color/ta_inky_border" />
 
             <TextView
                 android:id="@+id/btnLogout"
@@ -243,7 +265,7 @@
                 android:layout_height="wrap_content"
                 android:padding="8dp"
                 android:text="🚪 Log Out"
-                android:textColor="#D32F2F"
+                android:textColor="#FF6B6B"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 

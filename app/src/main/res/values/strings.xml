@@ -18,11 +18,12 @@
     <string name="app_subtitle">Dubai Taxi Salary Tracker</string>
     <string name="label_your_name">Your Name</string>
     <string name="hint_your_name">e.g. Md Rahim Uddin</string>
-    <string name="label_driver_id">Driver ID</string>
-    <string name="hint_driver_id">e.g. 123456</string>
+    <string name="label_driver_id">Driver No</string>
+    <string name="hint_driver_id">Enter your Driver No</string>
     <string name="label_mobile_number">Mobile Number</string>
     <string name="hint_mobile_number">e.g. +971501234567</string>
     <string name="radio_shift_taxi">Shift Taxi</string>
     <string name="radio_airport_taxi">Airport Taxi</string>
     <string name="btn_open_target_achieve">OPEN TARGET ACHIEVE</string>
+    <string name="home_btn_add_shift">+ ADD TODAY\'S SHIFT SUMMARY</string>
 </resources>
