@@ -25,5 +25,8 @@ data class ShiftRecord(
     val halaPeak: Double = 0.0,
     val tips: Double = 0.0,
 
+    // এই দিনের Taxi type ("SHIFT_TAXI" / "AIRPORT_TAXI"); ফাঁকা থাকলে প্রথমবার চালুর সময় নিজে বসে যায়
+    val taxiType: String = "",
+
     val createdAtMillis: Long = 0L
 )

@@ -12,6 +12,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 class AdminActivity : AppCompatActivity() {
@@ -22,8 +23,20 @@ class AdminActivity : AppCompatActivity() {
     private val allUsers = mutableListOf<UserModel>()
     private val db = FirebaseFirestore.getInstance()
 
+    // অ্যাডমিন লগ-ইনের ইমেইল (Firebase Authentication এ এই ইমেইলে অ্যাকাউন্ট থাকতে হবে)
+    private val adminEmail = "admininfo.bd@gmail.com"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // নিরাপত্তা: অ্যাডমিন পাসওয়ার্ড দিয়ে লগ-ইন না করলে এই স্ক্রিন বন্ধ
+        val email = FirebaseAuth.getInstance().currentUser?.email
+        if (email == null || !email.equals(adminEmail, ignoreCase = true)) {
+            Toast.makeText(this, "Access Denied", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
         enableEdgeToEdge()
         setContentView(R.layout.activity_admin)
 

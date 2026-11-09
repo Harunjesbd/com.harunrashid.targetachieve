@@ -2,8 +2,6 @@ package com.harunrashid.targetachieve
 
 import android.Manifest
 import android.app.DatePickerDialog
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
@@ -26,6 +24,8 @@ import com.harunrashid.targetachieve.databinding.ActivityAddShiftBinding
 import com.harunrashid.targetachieve.logic.MlKitOcrHelper
 import com.harunrashid.targetachieve.logic.ShiftTextParser
 import com.harunrashid.targetachieve.models.ShiftRecord
+import com.harunrashid.targetachieve.models.TaxiType
+import com.harunrashid.targetachieve.models.UserProfile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -43,6 +43,7 @@ class AddShiftActivity : AppCompatActivity() {
     private var selectedDate: Calendar = Calendar.getInstance()
     private var currentBitmap: Bitmap? = null
     private var cameraPhotoUri: Uri? = null
+    private var isAirport = false   // Airport Taxi হলে Bookings ঘর 0 (লক) এবং Airport Trips এর সাথে যোগ হয়
 
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
@@ -110,6 +111,31 @@ class AddShiftActivity : AppCompatActivity() {
         }
 
         binding.btnSaveShift.setOnClickListener { saveShift() }
+
+        loadTaxiType()
+    }
+
+    private fun loadTaxiType() {
+        val key = profileKey() ?: return
+        lifecycleScope.launch {
+            try {
+                val doc = db.collection("users").document(key).get().await()
+                val profile = doc.toObject(UserProfile::class.java)
+                isAirport = profile?.taxiTypeEnum() == TaxiType.AIRPORT_TAXI
+                applyTaxiLock()
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+    }
+
+    private fun applyTaxiLock() {
+        if (isAirport) {
+            binding.etBookings.setText("0")
+            binding.etBookings.isEnabled = false
+        } else {
+            binding.etBookings.isEnabled = true
+        }
     }
 
     private fun updateDateLabel() {
@@ -187,29 +213,18 @@ class AddShiftActivity : AppCompatActivity() {
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
-                // MlKitOcrHelper ব্যবহার করে সারিগুলো পজিশন অনুযায়ী পুনরায় জোড়া দেওয়া হচ্ছে
+                // MlKitOcrHelper ব্যবহার করে সারিগুলো পজিশন অনুযায়ী পুনরায় জোড়া দেওয়া হচ্ছে
                 val mlKitText = MlKitOcrHelper.reconstructRows(visionText)
                 val dateString = sdf.format(selectedDate.time)
 
+                // ডিবাগের জন্য শুধু Logcat এ থাকে, ব্যবহারকারীকে দেখানো হয় না
                 Log.d("OCR_RAW", "===== START =====\n$mlKitText\n===== END =====")
 
-                AlertDialog.Builder(this)
-                    .setTitle("OCR Raw Text (Debug)")
-                    .setMessage(mlKitText.take(2000))
-                    .setPositiveButton("Copy") { _, _ ->
-                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("OCR", mlKitText))
-                        Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                    }
-                    .setNegativeButton("Continue") { _, _ ->
-                        val parsed = ShiftTextParser.parse(mlKitText, dateString)
-                        fillForm(parsed)
-                        binding.progressBar.visibility = View.GONE
-                        binding.tvOcrStatus.text = "Data loaded - please check and edit if needed"
-                        binding.formContainer.visibility = View.VISIBLE
-                    }
-                    .setCancelable(false)
-                    .show()
+                val parsed = ShiftTextParser.parse(mlKitText, dateString)
+                fillForm(parsed)
+                binding.progressBar.visibility = View.GONE
+                binding.tvOcrStatus.text = "Data loaded - please check and edit if needed"
+                binding.formContainer.visibility = View.VISIBLE
             }
             .addOnFailureListener { e ->
                 binding.progressBar.visibility = View.GONE
@@ -226,8 +241,10 @@ class AddShiftActivity : AppCompatActivity() {
         binding.etTotalSharjah.setText(record.totalSharjah.toString())
         binding.etTotalTollways.setText(record.totalTollways.toString())
         binding.etShiftTrips.setText(record.shiftTrips.toString())
-        binding.etBookings.setText(record.bookings.toString())
-        binding.etAirportTrips.setText(record.airportTrips.toString())
+        // Airport Taxi: Bookings = 0 এবং বুকিংয়ের মান Airport Trips এ যোগ
+        val airportTotal = if (isAirport) record.airportTrips + record.bookings else record.airportTrips
+        binding.etBookings.setText(if (isAirport) "0" else record.bookings.toString())
+        binding.etAirportTrips.setText(airportTotal.toString())
         binding.etKmHired.setText(record.kmHired.toString())
         binding.etKmVacant.setText(record.kmVacant.toString())
         binding.etPaidInCareem.setText(record.paidInCareem.toString())
@@ -244,6 +261,11 @@ class AddShiftActivity : AppCompatActivity() {
 
         val dateString = sdf.format(selectedDate.time)
 
+        val enteredBookings = binding.etBookings.text.toString().toIntOrNull() ?: 0
+        val enteredAirport = binding.etAirportTrips.text.toString().toIntOrNull() ?: 0
+        val bookingsValue = if (isAirport) 0 else enteredBookings
+        val airportValue = if (isAirport) enteredAirport + enteredBookings else enteredAirport
+
         val record = ShiftRecord(
             dateString = dateString,
             driverNo = binding.etPlateNo.text.toString().trim(),
@@ -251,8 +273,9 @@ class AddShiftActivity : AppCompatActivity() {
             totalSharjah = binding.etTotalSharjah.text.toString().toDoubleOrNull() ?: 0.0,
             totalTollways = binding.etTotalTollways.text.toString().toDoubleOrNull() ?: 0.0,
             shiftTrips = binding.etShiftTrips.text.toString().toIntOrNull() ?: 0,
-            bookings = binding.etBookings.text.toString().toIntOrNull() ?: 0,
-            airportTrips = binding.etAirportTrips.text.toString().toIntOrNull() ?: 0,
+            bookings = bookingsValue,
+            taxiType = (if (isAirport) TaxiType.AIRPORT_TAXI else TaxiType.SHIFT_TAXI).name,
+            airportTrips = airportValue,
             kmHired = binding.etKmHired.text.toString().toDoubleOrNull() ?: 0.0,
             kmVacant = binding.etKmVacant.text.toString().toDoubleOrNull() ?: 0.0,
             paidInCareem = binding.etPaidInCareem.text.toString().toDoubleOrNull() ?: 0.0,

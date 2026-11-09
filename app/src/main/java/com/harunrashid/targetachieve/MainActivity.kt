@@ -151,13 +151,16 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ProfileEditActivity::class.java))
         }
         drawerBinding.btnUploadProfilePic.setOnClickListener { chooseProfilePictureSource() }
+        drawerBinding.btnAdminPanel.visibility = View.GONE   // শুধু অ্যাডমিনের ফোনে দেখাবে
         drawerBinding.btnAdminPanel.setOnClickListener { openAdminPanel() }
         drawerBinding.btnLogout.setOnClickListener { performLogout() }
 
         drawerBinding.rgDrawerTaxiType.setOnCheckedChangeListener { group, checkedId ->
+            if (revertingTaxi) return@setOnCheckedChangeListener
             if (group.isPressed || drawerBinding.rbDrawerAirportTaxi.isPressed || drawerBinding.rbDrawerShiftTaxi.isPressed) {
                 val t = if (checkedId == R.id.rbDrawerAirportTaxi) TaxiType.AIRPORT_TAXI else TaxiType.SHIFT_TAXI
-                updateTaxiType(t)
+                if (currentProfile?.taxiTypeEnum() == t) return@setOnCheckedChangeListener
+                confirmTaxiChange(t)
             }
         }
 
@@ -190,37 +193,54 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---------- Admin panel: admins/{mobileKey} OR admin email ----------
+    // ---------- Admin panel: admins তালিকা + ইমেইল-পাসওয়ার্ড (Firebase Authentication) ----------
     private fun openAdminPanel() {
         val key = profileKey() ?: return
         lifecycleScope.launch {
             try {
                 if (auth.currentUser == null) auth.signInAnonymously().await()
                 val isAdminDoc = db.collection("admins").document(key).get().await().exists()
-                if (isAdminDoc) {
-                    startActivity(Intent(this@MainActivity, AdminActivity::class.java))
-                } else {
-                    askAdminEmail()
-                }
+                if (isAdminDoc) showAdminLogin()
+                else Toast.makeText(this@MainActivity, "Access Denied", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
-                askAdminEmail()
+                Toast.makeText(this@MainActivity, "Access Denied", Toast.LENGTH_LONG).show()
             }
         }
     }
 
-    private fun askAdminEmail() {
-        val input = EditText(this).apply {
-            hint = "Admin email"
-            setPadding(48, 32, 48, 32)
+    private fun showAdminLogin() {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 8)
         }
+        val etEmail = EditText(this).apply {
+            hint = "Admin email"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        }
+        val etPass = EditText(this).apply {
+            hint = "Admin password"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        box.addView(etEmail)
+        box.addView(etPass)
+
         AlertDialog.Builder(this)
             .setTitle("Admin Access")
-            .setView(input)
+            .setView(box)
             .setPositiveButton("Open") { _, _ ->
-                if (input.text.toString().trim().equals(adminEmail, ignoreCase = true)) {
-                    startActivity(Intent(this, AdminActivity::class.java))
-                } else {
-                    Toast.makeText(this, "Access Denied: Only Admin can access this panel!", Toast.LENGTH_LONG).show()
+                val email = etEmail.text.toString().trim()
+                val pass = etPass.text.toString()
+                if (email.isEmpty() || pass.isEmpty()) {
+                    Toast.makeText(this, "Enter email and password", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                lifecycleScope.launch {
+                    try {
+                        auth.signInWithEmailAndPassword(email, pass).await()
+                        startActivity(Intent(this@MainActivity, AdminActivity::class.java))
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "Access Denied: wrong email or password", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -295,6 +315,12 @@ class MainActivity : AppCompatActivity() {
                 }
                 currentProfile = profile
 
+                // Admin Panel মেনু শুধু admins তালিকার ব্যবহারকারীর কাছে দেখাবে
+                val isAdminUser = try {
+                    db.collection("admins").document(key).get().await().exists()
+                } catch (e: Exception) { false }
+                drawerBinding.btnAdminPanel.visibility = if (isAdminUser) View.VISIBLE else View.GONE
+
                 drawerBinding.tvDrawerName.text = profile.name
                 drawerBinding.tvDrawerMobile.text = profile.mobile
                 drawerBinding.tvDrawerDriverNo.text = "Driver No: ${profile.driverId}"
@@ -331,9 +357,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var revertingTaxi = false
+
+    // Taxi type বদলানোর আগে নিশ্চিতকরণ: পুরনো দিনের হিসাব বদলাবে না
+    private fun confirmTaxiChange(t: TaxiType) {
+        AlertDialog.Builder(this)
+            .setTitle("Change Taxi Type")
+            .setMessage(
+                "From now on, new shifts will be calculated as ${t.displayName()}.\n\n" +
+                        "Days already saved keep their old taxi type and rates, so earlier days will NOT change.\n\n" +
+                        "Do you want to continue?"
+            )
+            .setCancelable(false)
+            .setPositiveButton("Change") { _, _ -> updateTaxiType(t) }
+            .setNegativeButton("Cancel") { _, _ -> revertTaxiRadio() }
+            .show()
+    }
+
+    private fun revertTaxiRadio() {
+        revertingTaxi = true
+        if (currentProfile?.taxiTypeEnum() == TaxiType.AIRPORT_TAXI) drawerBinding.rbDrawerAirportTaxi.isChecked = true
+        else drawerBinding.rbDrawerShiftTaxi.isChecked = true
+        revertingTaxi = false
+    }
+
     private fun updateTaxiType(t: TaxiType) {
         val key = profileKey() ?: return
         db.collection("users").document(key).update("taxiType", t.name)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Taxi type changed to ${t.displayName()}", Toast.LENGTH_LONG).show()
+                loadProfileAndDashboard()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Could not change Taxi type", Toast.LENGTH_LONG).show()
+                revertTaxiRadio()
+            }
     }
 
     private fun currentPeriodRange(): Pair<Calendar, Calendar> {
@@ -361,7 +419,14 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val snapshot = db.collection("users").document(key).collection("shifts").get().await()
-                val records = snapshot.toObjects(ShiftRecord::class.java)
+                // Taxi type লেখা নেই এমন দিনে এখনকার type একবার বসিয়ে দেওয়া হয় (পরে type বদলালেও এই দিন বদলাবে না)
+                val records = snapshot.documents.mapNotNull { d ->
+                    val r = d.toObject(ShiftRecord::class.java) ?: return@mapNotNull null
+                    if (r.taxiType.isEmpty()) {
+                        d.reference.update("taxiType", taxiType.name)
+                        r.copy(taxiType = taxiType.name)
+                    } else r
+                }
 
                 val inRange = records.filter { r ->
                     try {

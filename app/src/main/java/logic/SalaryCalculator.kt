@@ -38,17 +38,30 @@ object SalaryCalculator {
     /**
      * একদিনের Clean Money
      *  Add   = Shift Total + Paid in Careem − Hala Peak
-     *  Minus = KmHired×রেট + Tollways + Bookings×রেট + (ShiftTrips−Bookings)×রেট + AirportTrips×রেট
+     *  Minus = KmHired×জ্বালানি রেট + Tollways + Bookings×রেট + সাধারণ ট্রিপ×রেট + AirportTrips×রেট (Taxi type অনুযায়ী)
      *  Clean = Add − Minus
      */
-    fun cleanMoneyFor(record: ShiftRecord, taxiType: TaxiType): Double {
+    // প্রতিদিনের নিজের Taxi type ব্যবহার হয়; দিনে type লেখা না থাকলে fallback (বর্তমান type) ধরা হয়
+    fun typeFor(record: ShiftRecord, fallback: TaxiType): TaxiType =
+        try { TaxiType.valueOf(record.taxiType) } catch (e: Exception) { fallback }
+
+    fun cleanMoneyFor(record: ShiftRecord, fallbackType: TaxiType): Double {
+        val taxiType = typeFor(record, fallbackType)
         val add = record.shiftTotal + record.paidInCareem - record.halaPeak
-        val normalTrips = (record.shiftTrips - record.bookings).coerceAtLeast(0)
-        val minus = (record.kmHired * AppRules.FUEL_RATE_PER_KM) +
+        val isAirport = taxiType == TaxiType.AIRPORT_TAXI
+
+        // Airport Taxi: Bookings = 0, বুকিংয়ের সংখ্যা Airport Trips এ যোগ হয়
+        val airportTrips = if (isAirport) record.airportTrips + record.bookings else record.airportTrips
+        val bookings = if (isAirport) 0 else record.bookings
+
+        // সাধারণ ট্রিপ: Shift Taxi = ShiftTrips − Bookings; Airport Taxi = ShiftTrips − AirportTrips
+        val normalTrips = (record.shiftTrips - (if (isAirport) airportTrips else bookings)).coerceAtLeast(0)
+
+        val minus = (record.kmHired * taxiType.fuelRatePerKm()) +
                 record.totalTollways +
-                (record.bookings * AppRules.BOOKING_RATE) +
-                (normalTrips * AppRules.NORMAL_TRIP_RATE) +
-                (record.airportTrips * taxiType.airportTripRate())
+                (bookings * AppRules.BOOKING_RATE) +
+                (normalTrips * taxiType.normalTripRate()) +
+                (airportTrips * taxiType.airportTripRate())
         return add - minus
     }
 
