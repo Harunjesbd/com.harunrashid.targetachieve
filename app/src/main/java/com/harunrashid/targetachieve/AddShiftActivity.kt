@@ -8,6 +8,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.animation.ObjectAnimator
+import android.graphics.Color
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.ViewGroup
+import android.view.animation.LinearInterpolator
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -21,6 +28,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.harunrashid.targetachieve.databinding.ActivityAddShiftBinding
+import com.harunrashid.targetachieve.logic.AppRules
 import com.harunrashid.targetachieve.logic.MlKitOcrHelper
 import com.harunrashid.targetachieve.logic.ShiftTextParser
 import com.harunrashid.targetachieve.models.ShiftRecord
@@ -43,7 +51,9 @@ class AddShiftActivity : AppCompatActivity() {
     private var selectedDate: Calendar = Calendar.getInstance()
     private var currentBitmap: Bitmap? = null
     private var cameraPhotoUri: Uri? = null
-    private var isAirport = false   // Airport Taxi হলে Bookings ঘর 0 (লক) এবং Airport Trips এর সাথে যোগ হয়
+    private var isAirport = false   // Airport Taxi হলে: Bookings = 0 (লক), Shift Trips ঘর = সাধারণ ৩ AED ট্রিপ, Airport Trips ঘর = ২০ AED ট্রিপ
+    private var alertView: TextView? = null
+    private var blinkAnim: ObjectAnimator? = null
 
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
@@ -94,6 +104,7 @@ class AddShiftActivity : AppCompatActivity() {
         binding = ActivityAddShiftBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        hideUnusedFields()
         updateDateLabel()
 
         binding.tvDate.setOnClickListener { showDatePicker() }
@@ -115,6 +126,14 @@ class AddShiftActivity : AppCompatActivity() {
         loadTaxiType()
     }
 
+    // হিসাবে লাগে না এমন ঘর লুকানো: Driver No, Total Sharjah, KM Vacant
+    // (রসিদ থেকে মান পড়া ও সেভ হতেই থাকে, শুধু স্ক্রিনে দেখা যায় না)
+    private fun hideUnusedFields() {
+        listOf<View>(binding.etPlateNo, binding.etTotalSharjah, binding.etKmVacant).forEach {
+            (it.parent as? View)?.visibility = View.GONE
+        }
+    }
+
     private fun loadTaxiType() {
         val key = profileKey() ?: return
         lifecycleScope.launch {
@@ -129,13 +148,79 @@ class AddShiftActivity : AppCompatActivity() {
         }
     }
 
+    private fun labelOf(v: View): TextView? = (v.parent as? ViewGroup)?.getChildAt(0) as? TextView
+
     private fun applyTaxiLock() {
+        val shiftLabel = labelOf(binding.etShiftTrips)
+        val airportLabel = labelOf(binding.etAirportTrips)
         if (isAirport) {
             binding.etBookings.setText("0")
             binding.etBookings.isEnabled = false
+            shiftLabel?.text = "Normal Trips (3 AED)"
+            airportLabel?.text = "Airport Trips (20 AED)"
         } else {
             binding.etBookings.isEnabled = true
+            shiftLabel?.text = "Shift Trips"
+            airportLabel?.text = "Airport Trips"
         }
+    }
+
+    // Airport Taxi: "Data loaded..." লেখার ওপরে লাফানো (blink) সংকেত
+    private fun showTripAlert() {
+        if (alertView == null) {
+            val tv = TextView(this).apply {
+                setTextColor(Color.BLACK)
+                setBackgroundColor(0xFFFFC107.toInt())
+                textSize = 14f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setPadding(24, 20, 24, 20)
+            }
+            val parent = binding.tvOcrStatus.parent as ViewGroup
+            parent.addView(tv, parent.indexOfChild(binding.tvOcrStatus))
+            alertView = tv
+            val watcher = object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+                override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+                override fun afterTextChanged(s: Editable?) { stopTripAlert() }
+            }
+            binding.etShiftTrips.addTextChangedListener(watcher)
+            binding.etAirportTrips.addTextChangedListener(watcher)
+            binding.etBookings.addTextChangedListener(watcher)
+        }
+        alertView?.apply {
+            visibility = View.VISIBLE
+            setBackgroundColor(0xFFFFC107.toInt())
+            text = if (isAirport) {
+                "⚠ AIRPORT TAXI: Please correct the trips!\n" +
+                        "• Shift Trips box = NORMAL trips only (${rate(TaxiType.AIRPORT_TAXI.normalTripRate())} AED each)\n" +
+                        "• Airport Trips box = AIRPORT trips (${rate(TaxiType.AIRPORT_TAXI.airportTripRate())} AED each)"
+            } else {
+                "⚠ SHIFT TAXI: Please correct the trips!\n" +
+                        "• Airport Trips box = AIRPORT trips (${rate(TaxiType.SHIFT_TAXI.airportTripRate())} AED each)"
+            }
+        }
+        blinkAnim?.cancel()
+        blinkAnim = ObjectAnimator.ofFloat(alertView, "alpha", 1f, 0.25f).apply {
+            duration = 600
+            repeatMode = ObjectAnimator.REVERSE
+            repeatCount = ObjectAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            start()
+        }
+    }
+
+    // 15.0 -> "15", 6.5 -> "6.5"
+    private fun rate(d: Double): String = if (d % 1.0 == 0.0) d.toInt().toString() else d.toString()
+
+    private fun stopTripAlert() {
+        val tv = alertView ?: return
+        if (blinkAnim == null) return
+        blinkAnim?.cancel()
+        blinkAnim = null
+        tv.alpha = 1f
+        tv.setBackgroundColor(0xFF2E7D32.toInt())
+        tv.setTextColor(Color.WHITE)
+        tv.text = "✔ Trips updated. Please check again before saving."
     }
 
     private fun updateDateLabel() {
@@ -224,6 +309,7 @@ class AddShiftActivity : AppCompatActivity() {
                 fillForm(parsed)
                 binding.progressBar.visibility = View.GONE
                 binding.tvOcrStatus.text = "Data loaded - please check and edit if needed"
+                showTripAlert()
                 binding.formContainer.visibility = View.VISIBLE
             }
             .addOnFailureListener { e ->
@@ -241,10 +327,9 @@ class AddShiftActivity : AppCompatActivity() {
         binding.etTotalSharjah.setText(record.totalSharjah.toString())
         binding.etTotalTollways.setText(record.totalTollways.toString())
         binding.etShiftTrips.setText(record.shiftTrips.toString())
-        // Airport Taxi: Bookings = 0 এবং বুকিংয়ের মান Airport Trips এ যোগ
-        val airportTotal = if (isAirport) record.airportTrips + record.bookings else record.airportTrips
+        // Airport Taxi: Bookings = 0, বুকিংয়ের সংখ্যা Airport Trips ঘরে বসে (ড্রাইভার পরে ঠিক করে দেবে)
         binding.etBookings.setText(if (isAirport) "0" else record.bookings.toString())
-        binding.etAirportTrips.setText(airportTotal.toString())
+        binding.etAirportTrips.setText(if (isAirport) record.bookings.toString() else record.airportTrips.toString())
         binding.etKmHired.setText(record.kmHired.toString())
         binding.etKmVacant.setText(record.kmVacant.toString())
         binding.etPaidInCareem.setText(record.paidInCareem.toString())
@@ -252,7 +337,32 @@ class AddShiftActivity : AppCompatActivity() {
         binding.etTips.setText(record.tips.toString())
     }
 
+    // সেভের আগে ড্রাইভারকে ট্রিপের সংখ্যা নিশ্চিত করতে হয় (Shift ও Airport দুই Taxi type-এই)
     private fun saveShift() {
+        val shiftTrips = binding.etShiftTrips.text.toString().toIntOrNull() ?: 0
+        val bookings = binding.etBookings.text.toString().toIntOrNull() ?: 0
+        val airport = binding.etAirportTrips.text.toString().toIntOrNull() ?: 0
+
+        val msg = if (isAirport) {
+            "Normal trips (${rate(TaxiType.AIRPORT_TAXI.normalTripRate())} AED each): $shiftTrips\n" +
+                    "Airport trips (${rate(TaxiType.AIRPORT_TAXI.airportTripRate())} AED each): $airport\n\n" +
+                    "Are these correct?"
+        } else {
+            val normal = (shiftTrips - bookings).coerceAtLeast(0)
+            "Normal trips (${rate(TaxiType.SHIFT_TAXI.normalTripRate())} AED each): $normal\n" +
+                    "Bookings (${rate(AppRules.BOOKING_RATE)} AED each): $bookings\n" +
+                    "Airport trips (${rate(TaxiType.SHIFT_TAXI.airportTripRate())} AED each): $airport\n\n" +
+                    "Are these correct?"
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Confirm trips")
+            .setMessage(msg)
+            .setPositiveButton("Yes, Save") { _, _ -> performSave() }
+            .setNegativeButton("Edit", null)
+            .show()
+    }
+
+    private fun performSave() {
         val uid = profileKey()
         if (uid == null) {
             Toast.makeText(this, "Login problem, please try again", Toast.LENGTH_SHORT).show()
@@ -264,7 +374,7 @@ class AddShiftActivity : AppCompatActivity() {
         val enteredBookings = binding.etBookings.text.toString().toIntOrNull() ?: 0
         val enteredAirport = binding.etAirportTrips.text.toString().toIntOrNull() ?: 0
         val bookingsValue = if (isAirport) 0 else enteredBookings
-        val airportValue = if (isAirport) enteredAirport + enteredBookings else enteredAirport
+        val airportValue = enteredAirport
 
         val record = ShiftRecord(
             dateString = dateString,

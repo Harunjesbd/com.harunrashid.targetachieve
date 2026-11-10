@@ -50,16 +50,25 @@ object SalaryCalculator {
         val add = record.shiftTotal + record.paidInCareem - record.halaPeak
         val isAirport = taxiType == TaxiType.AIRPORT_TAXI
 
-        // Airport Taxi: Bookings = 0, বুকিংয়ের সংখ্যা Airport Trips এ যোগ হয়
-        val airportTrips = if (isAirport) record.airportTrips + record.bookings else record.airportTrips
-        val bookings = if (isAirport) 0 else record.bookings
-
-        // সাধারণ ট্রিপ: Shift Taxi = ShiftTrips − Bookings; Airport Taxi = ShiftTrips − AirportTrips
-        val normalTrips = (record.shiftTrips - (if (isAirport) airportTrips else bookings)).coerceAtLeast(0)
+        val bookingsCharged: Int
+        val airportTrips: Int
+        val normalTrips: Int
+        if (isAirport) {
+            // Airport Taxi: Bookings সবসময় ০ (চার্জ নেই)।
+            // "Shift Trips" ঘর = সাধারণ ৩ AED ট্রিপ, "Airport Trips" ঘর = ২০ AED ট্রিপ (ড্রাইভার ঠিক করে দেয়)
+            bookingsCharged = 0
+            normalTrips = record.shiftTrips.coerceAtLeast(0)
+            airportTrips = record.airportTrips.coerceAtLeast(0)
+        } else {
+            // Shift Taxi: সাধারণ ট্রিপ = Shift Trips − Bookings; Airport ট্রিপ রসিদ থেকে
+            bookingsCharged = record.bookings
+            normalTrips = (record.shiftTrips - record.bookings).coerceAtLeast(0)
+            airportTrips = record.airportTrips
+        }
 
         val minus = (record.kmHired * taxiType.fuelRatePerKm()) +
                 record.totalTollways +
-                (bookings * AppRules.BOOKING_RATE) +
+                (bookingsCharged * AppRules.BOOKING_RATE) +
                 (normalTrips * taxiType.normalTripRate()) +
                 (airportTrips * taxiType.airportTripRate())
         return add - minus
