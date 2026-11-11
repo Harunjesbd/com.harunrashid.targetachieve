@@ -66,11 +66,13 @@ object SalaryCalculator {
             airportTrips = record.airportTrips
         }
 
-        val minus = (record.kmHired * taxiType.fuelRatePerKm()) +
+        // রেট: Default (কোম্পানি) অথবা Custom (ড্রাইভারের নিজের), Settings অনুযায়ী
+        val rates = RateProvider.activeFor(taxiType)
+        val minus = (record.kmHired * rates.fuelPerKm) +
                 record.totalTollways +
-                (bookingsCharged * AppRules.BOOKING_RATE) +
-                (normalTrips * taxiType.normalTripRate()) +
-                (airportTrips * taxiType.airportTripRate())
+                (bookingsCharged * rates.bookingRate) +
+                (normalTrips * rates.normalTripRate) +
+                (airportTrips * rates.airportTripRate)
         return add - minus
     }
 

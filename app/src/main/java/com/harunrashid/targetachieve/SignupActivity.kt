@@ -64,9 +64,10 @@ class SignupActivity : AppCompatActivity() {
                 val isAdminNumber = db.collection("admins").document(key).get().await().exists()
 
                 val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+                // এক ফোনে এক অ্যাকাউন্ট: deviceIds/{ফোনের id} নথি থাকলে আগে অ্যাকাউন্ট খোলা হয়েছে
                 if (!isAdminNumber && deviceId.isNotEmpty()) {
-                    val dup = db.collection("users").whereEqualTo("deviceId", deviceId).limit(1).get().await()
-                    if (!dup.isEmpty) {
+                    val dup = db.collection("deviceIds").document(deviceId).get().await()
+                    if (dup.exists()) {
                         askGoLogin("এই ফোনে আগেই একটি অ্যাকাউন্ট খোলা হয়েছে। Log In করুন।")
                         return@launch
                     }
@@ -88,7 +89,18 @@ class SignupActivity : AppCompatActivity() {
                 )
                 ref.set(profile).await()
 
-                getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putString("profile_key", key).apply()
+                // এই ফোনটি চিহ্নিত করে রাখা (ব্যর্থ হলেও Sign Up চলবে)
+                if (!isAdminNumber && deviceId.isNotEmpty()) {
+                    try {
+                        db.collection("deviceIds").document(deviceId)
+                            .set(mapOf("mobileKey" to key, "createdAtMillis" to now)).await()
+                    } catch (_: Exception) { }
+                }
+
+                getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
+                    .putString("profile_key", key)
+                    .putBoolean("account_ready", true)
+                    .apply()
                 goMain()
             } catch (e: Exception) {
                 Toast.makeText(this@SignupActivity, "Signup failed: ${e.message}", Toast.LENGTH_LONG).show()

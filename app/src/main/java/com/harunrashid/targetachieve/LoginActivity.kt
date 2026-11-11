@@ -2,7 +2,9 @@ package com.harunrashid.targetachieve
 
 import android.content.Intent
 import android.os.Bundle
+import android.animation.ObjectAnimator
 import android.view.View
+import android.view.animation.LinearInterpolator
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +21,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
+    private var blinkAnim: ObjectAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +29,18 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.btnLoginSubmit.setOnClickListener { login() }
+
+        // প্রথমবার ইনস্টলে (এই ফোনে এখনো অ্যাকাউন্ট হয়নি) "New User? Create Account" ঝলমল করবে
+        val accountReady = getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("account_ready", false)
+        if (!accountReady) {
+            blinkAnim = ObjectAnimator.ofFloat(binding.btnGoToSignup, "alpha", 1f, 0.2f).apply {
+                duration = 700
+                repeatMode = ObjectAnimator.REVERSE
+                repeatCount = ObjectAnimator.INFINITE
+                interpolator = LinearInterpolator()
+                start()
+            }
+        }
         binding.btnGoToSignup.setOnClickListener {
             startActivity(Intent(this, SignupActivity::class.java))
             finish()
@@ -74,7 +89,7 @@ class LoginActivity : AppCompatActivity() {
                         showError("Mobile ও Name ঠিক আছে, কিন্তু Driver No মিলছে না।")
                     else -> {
                         getSharedPreferences("app_prefs", MODE_PRIVATE)
-                            .edit().putString("profile_key", key).apply()
+                            .edit().putString("profile_key", key).putBoolean("account_ready", true).apply()
                         val i = Intent(this@LoginActivity, MainActivity::class.java)
                         i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(i)
@@ -88,6 +103,11 @@ class LoginActivity : AppCompatActivity() {
                 binding.btnLoginSubmit.isEnabled = true
             }
         }
+    }
+
+    override fun onDestroy() {
+        blinkAnim?.cancel()
+        super.onDestroy()
     }
 
     private fun showError(msg: String) {

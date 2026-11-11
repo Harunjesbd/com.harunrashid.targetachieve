@@ -173,7 +173,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:padding="8dp"
-                android:text="✏️ Edit Profile"
+                android:text="✏️ Edit Profile &amp; Settings"
                 android:textColor="@color/ta_white"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -185,6 +185,17 @@
                 android:layout_marginBottom="12dp"
                 android:padding="8dp"
                 android:text="📖 Driver Guide"
+                android:textColor="@color/ta_white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btnSalarySlab"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:padding="8dp"
+                android:text="📊 Salary Slab"
                 android:textColor="@color/ta_white"
                 android:textSize="14sp"
                 android:textStyle="bold" />

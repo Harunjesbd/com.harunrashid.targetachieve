@@ -49,6 +49,8 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.concurrent.Executor
 import com.harunrashid.targetachieve.logic.NoticeHelper
+import com.harunrashid.targetachieve.logic.RateProvider
+import com.harunrashid.targetachieve.logic.SlabDialog
 import com.harunrashid.targetachieve.logic.UpdateChecker
 
 class MainActivity : AppCompatActivity() {
@@ -90,6 +92,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // এই ফোনে অ্যাকাউন্ট আছে: লগ-ইন স্ক্রিনের "Create Account" ঝলমল আর লাগবে না
+        getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putBoolean("account_ready", true).apply()
+
         setSupportActionBar(binding.toolbar)
         supportActionBar?.title = ""
         drawerBinding = binding.navDrawerContent
@@ -102,6 +107,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnViewReports.setOnClickListener { startActivity(Intent(this, ReportsActivity::class.java)) }
         binding.btnFinalizePeriod.setOnClickListener { finalizeCurrentPeriod() }
         binding.btnCurrentMonthMenu.setOnClickListener { showCurrentMonthPopup(it) }
+        // "Achieved Target" কার্ডে চাপলে Salary Slab দেখায়
+        binding.tvCurrentTarget.setOnClickListener { SlabDialog.show(this, currentSummary?.currentTargetPercent) }
     }
 
     private var biometricAsked = false
@@ -139,6 +146,10 @@ class MainActivity : AppCompatActivity() {
     private fun setupDrawerActions() {
         drawerBinding.btnShareApp.setOnClickListener { shareAppAsApk() }
         drawerBinding.btnDriverGuide.setOnClickListener { showDriverGuide() }
+        drawerBinding.btnSalarySlab.setOnClickListener {
+            binding.drawerLayout.closeDrawers()
+            SlabDialog.show(this, currentSummary?.currentTargetPercent)
+        }
 
         drawerBinding.btnWhatsAppSupport.setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/971552335930")))
@@ -314,6 +325,7 @@ class MainActivity : AppCompatActivity() {
                     return@launch
                 }
                 currentProfile = profile
+                RateProvider.applyProfile(profile)
 
                 // Admin Panel মেনু শুধু admins তালিকার ব্যবহারকারীর কাছে দেখাবে
                 val isAdminUser = try {
@@ -347,6 +359,7 @@ class MainActivity : AppCompatActivity() {
                         Toast.makeText(this@MainActivity, "Your free trial will expire in $daysLeft days", Toast.LENGTH_LONG).show()
                     }
                 }
+                RateProvider.refreshRemote(this@MainActivity)
                 loadCurrentPeriodShifts(key, profile.taxiTypeEnum())
                 if (!UpdateChecker.check(this@MainActivity)) {
                     NoticeHelper.checkAndShow(this@MainActivity)
@@ -414,7 +427,8 @@ class MainActivity : AppCompatActivity() {
         val (start, end) = currentPeriodRange()
         currentPeriodStart = start
         currentPeriodEnd = end
-        binding.tvPeriodRange.text = "${sdf.format(start.time)}  →  ${sdf.format(end.time)}"
+        binding.tvPeriodRange.text = "${sdf.format(start.time)}  →  ${sdf.format(end.time)}" +
+                (if (RateProvider.isCustom()) "\n⚙ Custom rates active" else "")
 
         lifecycleScope.launch {
             try {

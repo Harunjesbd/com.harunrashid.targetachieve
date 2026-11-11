@@ -30,6 +30,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.harunrashid.targetachieve.databinding.ActivityAddShiftBinding
 import com.harunrashid.targetachieve.logic.AppRules
 import com.harunrashid.targetachieve.logic.MlKitOcrHelper
+import com.harunrashid.targetachieve.logic.RateProvider
 import com.harunrashid.targetachieve.logic.ShiftTextParser
 import com.harunrashid.targetachieve.models.ShiftRecord
 import com.harunrashid.targetachieve.models.TaxiType
@@ -141,6 +142,7 @@ class AddShiftActivity : AppCompatActivity() {
                 val doc = db.collection("users").document(key).get().await()
                 val profile = doc.toObject(UserProfile::class.java)
                 isAirport = profile?.taxiTypeEnum() == TaxiType.AIRPORT_TAXI
+                if (profile != null) RateProvider.applyProfile(profile)
                 applyTaxiLock()
             } catch (e: Exception) {
                 // ignore
@@ -192,11 +194,11 @@ class AddShiftActivity : AppCompatActivity() {
             setBackgroundColor(0xFFFFC107.toInt())
             text = if (isAirport) {
                 "⚠ AIRPORT TAXI: Please correct the trips!\n" +
-                        "• Shift Trips box = NORMAL trips only (${rate(TaxiType.AIRPORT_TAXI.normalTripRate())} AED each)\n" +
-                        "• Airport Trips box = AIRPORT trips (${rate(TaxiType.AIRPORT_TAXI.airportTripRate())} AED each)"
+                        "• Shift Trips box = NORMAL trips only (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).normalTripRate)} AED each)\n" +
+                        "• Airport Trips box = AIRPORT trips (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).airportTripRate)} AED each)"
             } else {
                 "⚠ SHIFT TAXI: Please correct the trips!\n" +
-                        "• Airport Trips box = AIRPORT trips (${rate(TaxiType.SHIFT_TAXI.airportTripRate())} AED each)"
+                        "• Airport Trips box = AIRPORT trips (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).airportTripRate)} AED each)"
             }
         }
         blinkAnim?.cancel()
@@ -344,14 +346,14 @@ class AddShiftActivity : AppCompatActivity() {
         val airport = binding.etAirportTrips.text.toString().toIntOrNull() ?: 0
 
         val msg = if (isAirport) {
-            "Normal trips (${rate(TaxiType.AIRPORT_TAXI.normalTripRate())} AED each): $shiftTrips\n" +
-                    "Airport trips (${rate(TaxiType.AIRPORT_TAXI.airportTripRate())} AED each): $airport\n\n" +
+            "Normal trips (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).normalTripRate)} AED each): $shiftTrips\n" +
+                    "Airport trips (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).airportTripRate)} AED each): $airport\n\n" +
                     "Are these correct?"
         } else {
             val normal = (shiftTrips - bookings).coerceAtLeast(0)
-            "Normal trips (${rate(TaxiType.SHIFT_TAXI.normalTripRate())} AED each): $normal\n" +
-                    "Bookings (${rate(AppRules.BOOKING_RATE)} AED each): $bookings\n" +
-                    "Airport trips (${rate(TaxiType.SHIFT_TAXI.airportTripRate())} AED each): $airport\n\n" +
+            "Normal trips (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).normalTripRate)} AED each): $normal\n" +
+                    "Bookings (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).bookingRate)} AED each): $bookings\n" +
+                    "Airport trips (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).airportTripRate)} AED each): $airport\n\n" +
                     "Are these correct?"
         }
         AlertDialog.Builder(this)
