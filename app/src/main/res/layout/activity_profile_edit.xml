@@ -105,6 +105,28 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:text="Email"
+                android:textColor="@color/ta_champagne"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/etEditEmail"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_edit_ta"
+                android:hint="name@gmail.com"
+                android:inputType="textEmailAddress"
+                android:paddingHorizontal="12dp"
+                android:textColor="@color/ta_white"
+                android:textColorHint="#88FFFFFF"
+                android:textStyle="bold" />
+
+            <TextView
                 android:id="@+id/tvEditMobile"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

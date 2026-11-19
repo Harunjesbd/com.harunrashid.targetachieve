@@ -50,6 +50,7 @@ import java.util.Locale
 import java.util.concurrent.Executor
 import com.harunrashid.targetachieve.logic.NoticeHelper
 import com.harunrashid.targetachieve.logic.RateProvider
+import com.harunrashid.targetachieve.logic.ServerTime
 import com.harunrashid.targetachieve.logic.SlabDialog
 import com.harunrashid.targetachieve.logic.UpdateChecker
 
@@ -344,21 +345,29 @@ class MainActivity : AppCompatActivity() {
                 drawerBinding.switchBiometric.isChecked =
                     getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("biometric_enabled", false)
 
-                val now = System.currentTimeMillis()
+                val now = ServerTime.now(this@MainActivity)
                 val trialActive = profile.trialExpiryMillis > now
                 val subActive = profile.subscriptionExpiryMillis > now
 
-                if (!trialActive && !subActive) {
+                // config/app এর freeUntil (তারিখ): সেই তারিখ পর্যন্ত সবার জন্য ফ্রি
+                val freeUntil = try {
+                    db.collection("config").document("app").get().await()
+                        .getTimestamp("freeUntil")?.toDate()?.time ?: 0L
+                } catch (e: Exception) { 0L }
+                val freeActive = freeUntil > now
+
+                if (!trialActive && !subActive && !freeActive) {
                     startActivity(Intent(this@MainActivity, PaywallActivity::class.java))
                     finish()
                     return@launch
                 }
-                if (trialActive && !subActive) {
+                if (trialActive && !subActive && !freeActive) {
                     val daysLeft = (profile.trialExpiryMillis - now) / (24L * 60 * 60 * 1000)
                     if (daysLeft in 0..5) {
                         Toast.makeText(this@MainActivity, "Your free trial will expire in $daysLeft days", Toast.LENGTH_LONG).show()
                     }
                 }
+                if (profile.email.isBlank()) askForEmail(key)
                 RateProvider.refreshRemote(this@MainActivity)
                 loadCurrentPeriodShifts(key, profile.taxiTypeEnum())
                 if (!UpdateChecker.check(this@MainActivity)) {
@@ -368,6 +377,48 @@ class MainActivity : AppCompatActivity() {
                 // ignore
             }
         }
+    }
+
+    // Email না থাকলে দিনে একবার চাওয়া হয় (পরে Play Store ও অ্যাকাউন্ট উদ্ধারের জন্য)
+    private fun askForEmail(key: String) {
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val today = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
+        if (prefs.getLong("email_prompt_day", -1L) == today) return
+        prefs.edit().putLong("email_prompt_day", today).apply()
+
+        val input = EditText(this).apply {
+            hint = "name@gmail.com"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+            setPadding(48, 32, 48, 32)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Add your Email")
+            .setMessage("Please add your email address. It helps to keep your account safe.")
+            .setView(input)
+            .setPositiveButton("Save", null)
+            .setNegativeButton("Later", null)
+            .create()
+            .also { d ->
+                d.setOnShowListener {
+                    d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        val e = input.text.toString().trim().lowercase()
+                        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(e).matches()) {
+                            Toast.makeText(this, "Please enter a valid email", Toast.LENGTH_SHORT).show()
+                            return@setOnClickListener
+                        }
+                        lifecycleScope.launch {
+                            try {
+                                db.collection("users").document(key).update("email", e).await()
+                                Toast.makeText(this@MainActivity, "Email saved ✅", Toast.LENGTH_SHORT).show()
+                                d.dismiss()
+                            } catch (ex: Exception) {
+                                Toast.makeText(this@MainActivity, "Failed: ${ex.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                }
+                d.show()
+            }
     }
 
     private var revertingTaxi = false

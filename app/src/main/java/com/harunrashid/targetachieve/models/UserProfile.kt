@@ -13,6 +13,7 @@ data class UserProfile(
     val subscriptionExpiryMillis: Long = 0L,
     val createdAtMillis: Long = 0L,
     val profilePicBase64: String = "",
+    val email: String = "",
 
     // ---- রেট সেটিংস ----
     // "DEFAULT" = কোম্পানির রেট, "CUSTOM" = ড্রাইভারের নিজের রেট

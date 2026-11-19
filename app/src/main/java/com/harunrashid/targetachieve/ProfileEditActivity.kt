@@ -52,6 +52,7 @@ class ProfileEditActivity : AppCompatActivity() {
                 val doc = db.collection("users").document(key).get().await()
                 binding.etEditName.setText(doc.getString("name") ?: "")
                 binding.etEditDriverId.setText(doc.getString("driverId") ?: "")
+                binding.etEditEmail.setText(doc.getString("email") ?: "")
                 binding.tvEditMobile.text = "Mobile: " + (doc.getString("mobile") ?: "")
 
                 val p = doc.toObject(UserProfile::class.java)
@@ -96,10 +97,15 @@ class ProfileEditActivity : AppCompatActivity() {
             Toast.makeText(this, "Name ও Driver No খালি রাখা যাবে না", Toast.LENGTH_SHORT).show()
             return
         }
+        val email = binding.etEditEmail.text.toString().trim().lowercase()
+        if (email.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            Toast.makeText(this, "সঠিক Email দিন", Toast.LENGTH_SHORT).show()
+            return
+        }
         lifecycleScope.launch {
             try {
                 db.collection("users").document(key)
-                    .update(mapOf("name" to name, "driverId" to driverNo)).await()
+                    .update(mapOf("name" to name, "driverId" to driverNo, "email" to email)).await()
                 Toast.makeText(this@ProfileEditActivity, "Profile updated ✅", Toast.LENGTH_SHORT).show()
                 finish()
             } catch (e: Exception) {

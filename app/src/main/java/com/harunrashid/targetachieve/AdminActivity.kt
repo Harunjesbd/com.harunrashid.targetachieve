@@ -10,6 +10,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.harunrashid.targetachieve.logic.ServerTime
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
@@ -21,6 +25,8 @@ class AdminActivity : AppCompatActivity() {
     private lateinit var tvCount: TextView
     private lateinit var etSearch: EditText
     private val allUsers = mutableListOf<UserModel>()
+    private var serverNow: Long = System.currentTimeMillis()
+    private var freeUntil: Long = 0L
     private val db = FirebaseFirestore.getInstance()
 
     // অ্যাডমিন লগ-ইনের ইমেইল (Firebase Authentication এ এই ইমেইলে অ্যাকাউন্ট থাকতে হবে)
@@ -72,12 +78,24 @@ class AdminActivity : AppCompatActivity() {
                         name = doc.getString("name") ?: "-",
                         mobile = doc.getString("mobile") ?: "-",
                         driverId = doc.getString("driverId") ?: "-",
+                        email = doc.getString("email") ?: "",
+                        createdAtMillis = doc.getLong("createdAtMillis") ?: 0L,
+                        trialStartMillis = doc.getLong("trialStartMillis") ?: 0L,
                         trialExpiryMillis = doc.getLong("trialExpiryMillis") ?: 0L,
                         subscriptionExpiryMillis = doc.getLong("subscriptionExpiryMillis") ?: 0L
                     )
                 )
             }
-            applyFilter()
+            // সবচেয়ে নতুন অ্যাকাউন্ট আগে
+            allUsers.sortByDescending { it.openedMillis() }
+            lifecycleScope.launch {
+                serverNow = ServerTime.now(this@AdminActivity)
+                freeUntil = try {
+                    db.collection("config").document("app").get().await()
+                        .getTimestamp("freeUntil")?.toDate()?.time ?: 0L
+                } catch (e: Exception) { 0L }
+                applyFilter()
+            }
         }
     }
 
@@ -85,9 +103,15 @@ class AdminActivity : AppCompatActivity() {
         val q = etSearch.text.toString().trim().lowercase()
         val filtered = if (q.isEmpty()) allUsers else allUsers.filter {
             it.name.lowercase().contains(q) || it.mobile.lowercase().contains(q) ||
-                    it.driverId.lowercase().contains(q) || it.id.lowercase().contains(q)
+                    it.driverId.lowercase().contains(q) || it.id.lowercase().contains(q) ||
+                    it.email.lowercase().contains(q)
         }
-        adapter.submit(filtered)
-        tvCount.text = "Total users: ${allUsers.size} | Showing: ${filtered.size}"
+        adapter.submit(filtered, serverNow)
+        var text = "Total users: ${allUsers.size} | Showing: ${filtered.size}"
+        if (freeUntil > serverNow) {
+            text += "\n🎁 Free for ALL users until " +
+                    java.text.SimpleDateFormat("dd-MM-yyyy", java.util.Locale.ENGLISH).format(freeUntil)
+        }
+        tvCount.text = text
     }
 }

@@ -1,10 +1,13 @@
 package com.harunrashid.targetachieve
 
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -13,18 +16,26 @@ import java.util.Locale
 class UserAdapter(private var items: List<UserModel>) : RecyclerView.Adapter<UserAdapter.VH>() {
 
     private val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
+    private val DAY = 24L * 60 * 60 * 1000
+
+    // সার্ভারের সময় (AdminActivity থেকে দেওয়া হয়)
+    var nowMillis: Long = System.currentTimeMillis()
 
     class VH(v: android.view.View) : RecyclerView.ViewHolder(v) {
         val name: TextView = v.findViewById(R.id.tvAdminName)
         val mobile: TextView = v.findViewById(R.id.tvAdminMobile)
+        val email: TextView = v.findViewById(R.id.tvAdminEmail)
         val driver: TextView = v.findViewById(R.id.tvAdminDriver)
+        val opened: TextView = v.findViewById(R.id.tvAdminOpened)
         val status: TextView = v.findViewById(R.id.tvAdminStatus)
         val expires: TextView = v.findViewById(R.id.tvAdminExpires)
         val add30: Button = v.findViewById(R.id.btnAdd30)
+        val addCustom: Button = v.findViewById(R.id.btnAddCustom)
     }
 
-    fun submit(list: List<UserModel>) {
+    fun submit(list: List<UserModel>, now: Long) {
         items = list
+        nowMillis = now
         notifyDataSetChanged()
     }
 
@@ -33,41 +44,77 @@ class UserAdapter(private var items: List<UserModel>) : RecyclerView.Adapter<Use
 
     override fun getItemCount() = items.size
 
+    private fun statusOf(u: UserModel, now: Long): String = when {
+        u.subscriptionExpiryMillis > now -> "PAID"
+        u.trialExpiryMillis > now -> "TRIAL"
+        else -> "EXPIRED"
+    }
+
     override fun onBindViewHolder(h: VH, position: Int) {
         val u = items[position]
-        val now = System.currentTimeMillis()
+        val now = nowMillis
+
         h.name.text = "👤 ${u.name}"
         h.mobile.text = "📱 ${u.mobile}"
+        h.email.text = "✉️ " + (if (u.email.isBlank()) "—" else u.email)
         h.driver.text = "🚕 Driver No: ${u.driverId}   |   ID: ${u.id}"
+        val opened = u.openedMillis()
+        h.opened.text = "📅 Opened: " + (if (opened > 0) sdf.format(opened) else "—")
 
-        val subActive = u.subscriptionExpiryMillis > now
-        val trialActive = u.trialExpiryMillis > now
-        val (label, expiry) = when {
-            subActive -> "PAID" to u.subscriptionExpiryMillis
-            trialActive -> "TRIAL" to u.trialExpiryMillis
-            else -> "EXPIRED" to maxOf(u.trialExpiryMillis, u.subscriptionExpiryMillis)
+        val label = statusOf(u, now)
+        val expiry = when (label) {
+            "PAID" -> u.subscriptionExpiryMillis
+            "TRIAL" -> u.trialExpiryMillis
+            else -> maxOf(u.trialExpiryMillis, u.subscriptionExpiryMillis)
         }
-        h.status.text = "Status: $label"
+        val daysLeft = if (expiry > now) ((expiry - now + DAY - 1) / DAY) else 0L
+
+        h.status.text = "Status: $label   |   Days left: $daysLeft"
         h.status.setTextColor(
             when (label) {
-                "PAID" -> 0xFF2E7D32.toInt()
-                "TRIAL" -> 0xFF1565C0.toInt()
-                else -> 0xFFD32F2F.toInt()
+                "PAID" -> 0xFF4CAF50.toInt()
+                "TRIAL" -> 0xFF64B5F6.toInt()
+                else -> 0xFFEF5350.toInt()
             }
         )
         h.expires.text = "Expires: " + (if (expiry > 0) sdf.format(expiry) else "-")
 
-        h.add30.setOnClickListener {
-            val base = maxOf(u.subscriptionExpiryMillis, now)
-            val newExpiry = base + 30L * 24 * 60 * 60 * 1000
-            FirebaseFirestore.getInstance().collection("users").document(u.id)
-                .update("subscriptionExpiryMillis", newExpiry)
-                .addOnSuccessListener {
-                    Toast.makeText(h.itemView.context, "30 days added ✅", Toast.LENGTH_SHORT).show()
+        h.add30.setOnClickListener { extend(h, u, 30) }
+        h.addCustom.setOnClickListener {
+            val input = EditText(h.itemView.context).apply {
+                hint = "Days (e.g. 90)"
+                inputType = InputType.TYPE_CLASS_NUMBER
+                setPadding(48, 32, 48, 32)
+            }
+            AlertDialog.Builder(h.itemView.context)
+                .setTitle("Add days to ${u.name}")
+                .setView(input)
+                .setPositiveButton("Add") { _, _ ->
+                    val d = input.text.toString().trim().toIntOrNull()
+                    if (d == null || d < 1 || d > 730) {
+                        Toast.makeText(h.itemView.context, "1 থেকে 730 এর মধ্যে সংখ্যা দিন", Toast.LENGTH_SHORT).show()
+                    } else extend(h, u, d)
                 }
-                .addOnFailureListener {
-                    Toast.makeText(h.itemView.context, "Failed: ${it.message}", Toast.LENGTH_LONG).show()
-                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
+    }
+
+    // TRIAL ব্যবহারকারীর ট্রায়াল বাড়ে; PAID/EXPIRED ব্যবহারকারীর সাবস্ক্রিপশন বাড়ে
+    private fun extend(h: VH, u: UserModel, days: Int) {
+        val now = nowMillis
+        val update: Pair<String, Long> = if (statusOf(u, now) == "TRIAL") {
+            "trialExpiryMillis" to (u.trialExpiryMillis + days * DAY)
+        } else {
+            "subscriptionExpiryMillis" to (maxOf(u.subscriptionExpiryMillis, now) + days * DAY)
+        }
+        FirebaseFirestore.getInstance().collection("users").document(u.id)
+            .update(update.first, update.second)
+            .addOnSuccessListener {
+                Toast.makeText(h.itemView.context, "$days days added ✅", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(h.itemView.context, "Failed: ${it.message}", Toast.LENGTH_LONG).show()
+            }
     }
 }
