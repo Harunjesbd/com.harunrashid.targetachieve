@@ -160,9 +160,12 @@
                             android:id="@+id/btnCurrentMonthMenu"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:padding="6dp"
-                            android:text="⋮"
-                            android:textSize="20sp"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="6dp"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp"
+                            android:text="Check &amp; Edit  ⋮"
+                            android:textSize="14sp"
                             android:textStyle="bold"
                             android:textColor="@color/ta_champagne" />
                     </LinearLayout>

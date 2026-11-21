@@ -429,8 +429,8 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Change Taxi Type")
             .setMessage(
                 "From now on, new shifts will be calculated as ${t.displayName()}.\n\n" +
-                        "Days already saved keep their old taxi type and rates, so earlier days will NOT change.\n\n" +
-                        "Do you want to continue?"
+                "Days already saved keep their old taxi type and rates, so earlier days will NOT change.\n\n" +
+                "Do you want to continue?"
             )
             .setCancelable(false)
             .setPositiveButton("Change") { _, _ -> updateTaxiType(t) }
@@ -471,6 +471,11 @@ class MainActivity : AppCompatActivity() {
             start.set(Calendar.DAY_OF_MONTH, 21)
             end.set(Calendar.DAY_OF_MONTH, 20)
         }
+        // পিরিয়ডের শুরু ২১ তারিখ ০০:০০ এবং শেষ ২০ তারিখ ২৩:৫৯ ধরা হয়, নইলে ২১ তারিখের শিফট বাদ পড়ে যেত
+        start.set(Calendar.HOUR_OF_DAY, 0); start.set(Calendar.MINUTE, 0)
+        start.set(Calendar.SECOND, 0); start.set(Calendar.MILLISECOND, 0)
+        end.set(Calendar.HOUR_OF_DAY, 23); end.set(Calendar.MINUTE, 59)
+        end.set(Calendar.SECOND, 59); end.set(Calendar.MILLISECOND, 999)
         return Pair(start, end)
     }
 
@@ -573,14 +578,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ---------- ⋮ menu → full month popup ----------
+    // ⋮ চাপলেই সরাসরি "Check & Edit" স্ক্রিন খোলে (দিন ধরে দেখা, ✏️ সংশোধন, 🗑️ মোছা)
     private fun showCurrentMonthPopup(anchor: View) {
-        val popup = PopupMenu(this, anchor)
-        popup.menu.add("View Current Month Details")
-        popup.setOnMenuItemClickListener {
-            openFullPeriodDetails()
-            true
-        }
-        popup.show()
+        openFullPeriodDetails()
     }
 
     private fun openFullPeriodDetails() {
