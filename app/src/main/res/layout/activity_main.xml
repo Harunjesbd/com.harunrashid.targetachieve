@@ -38,177 +38,391 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Current Period (21 - 20)"
-                    android:textColor="@color/ta_champagne"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvPeriodRange"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="20dp"
-                    android:textColor="@color/ta_white"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <!-- Total Clean Money -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    android:background="@drawable/bg_card_ta"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Total Clean Money"
-                        android:textColor="@color/ta_champagne"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvTotalCleanMoney"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 AED"
-                        android:textColor="@color/ta_white"
-                        android:textSize="24sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Total Salary -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    android:background="@drawable/bg_card_ta"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Total Salary (so far)"
-                        android:textColor="@color/ta_champagne"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvTotalSalary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 AED"
-                        android:textColor="@color/ta_champagne"
-                        android:textSize="26sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Target + Daily Breakdown -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="20dp"
-                    android:background="@drawable/bg_card_ta"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:id="@+id/tvCurrentTarget"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="➤ Achieved Target %: 0% (0 AED)"
-                        android:textColor="@color/ta_white"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvNextTarget"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="➤ For the next target you need per day: -"
-                        android:textColor="@color/ta_white"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                    android:layout_marginBottom="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
                     <LinearLayout
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="10dp"
-                        android:layout_marginBottom="8dp">
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
                         <TextView
-                            android:layout_width="0dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Daily Breakdown (Newest First)"
+                            android:text="Current Period (21 - 20)"
                             android:textColor="@color/ta_champagne"
                             android:textSize="13sp"
                             android:textStyle="bold" />
 
                         <TextView
-                            android:id="@+id/btnCurrentMonthMenu"
+                            android:id="@+id/tvPeriodRange"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:paddingStart="10dp"
-                            android:paddingEnd="6dp"
-                            android:paddingTop="6dp"
-                            android:paddingBottom="6dp"
-                            android:text="Check &amp; Edit  ⋮"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/ta_champagne" />
+                            android:textColor="@color/ta_white"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
+                    <!-- ছোট কার্ড: Total Deposit -->
                     <LinearLayout
-                        android:id="@+id/dailyContainer"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_card_gold"
+                        android:gravity="center"
                         android:orientation="vertical"
-                        android:layout_marginBottom="8dp" />
+                        android:paddingStart="12dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="12dp"
+                        android:paddingBottom="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL DEPOSIT"
+                            android:textColor="@color/ta_champagne"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvTotalDeposit"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0 AED"
+                            android:textColor="@color/ta_white"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
                 </LinearLayout>
 
-                <Button
-                    android:id="@+id/btnAddShift"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:minHeight="56dp"
-                    android:text="@string/home_btn_add_shift"
-                    android:textStyle="bold" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:orientation="horizontal">
 
-                <Button
-                    android:id="@+id/btnViewReports"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:minHeight="56dp"
-                    android:text="View Saved Reports"
-                    android:textColor="@color/ta_white"
-                    android:textStyle="bold"
-                    app:strokeColor="@color/ta_champagne" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp"
+            android:background="@drawable/bg_card_gold"
+            android:orientation="vertical"
+            android:padding="14dp">
 
-                <Button
-                    android:id="@+id/btnFinalizePeriod"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="56dp"
-                    android:text="Finalize &amp; Save This Period"
-                    android:textColor="@color/ta_white"
-                    android:textStyle="bold"
-                    app:strokeColor="@color/ta_champagne" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="TOTAL CLEAN MONEY"
+                android:textColor="@color/ta_champagne"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvTotalCleanMoney"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="18sp"
+                android:autoSizeMaxTextSize="32sp"
+                android:text="0 AED"
+                android:textColor="#FFE08A"
+                android:letterSpacing="0.04"
+                android:shadowColor="#FFD54F"
+                android:shadowRadius="12"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCleanSub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeMaxTextSize="14sp"
+                android:text="0 days worked"
+                android:textColor="#D8DDF2" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:background="@drawable/bg_card_gold"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="TOTAL SALARY"
+                android:textColor="@color/ta_champagne"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvTotalSalary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="18sp"
+                android:autoSizeMaxTextSize="32sp"
+                android:text="0 AED"
+                android:textColor="#FFE08A"
+                android:letterSpacing="0.04"
+                android:shadowColor="#FFD54F"
+                android:shadowRadius="12"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSalarySub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeMaxTextSize="14sp"
+                android:text="Tips included: 0"
+                android:textColor="#D8DDF2" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp"
+            android:background="@drawable/bg_card_gold"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="DAILY AVERAGE CLEAN"
+                android:textColor="@color/ta_champagne"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvAvgClean"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="18sp"
+                android:autoSizeMaxTextSize="32sp"
+                android:text="0 AED"
+                android:textColor="@color/ta_white"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvAvgSub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeMaxTextSize="14sp"
+                android:text="per working day"
+                android:textColor="#D8DDF2" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:background="@drawable/bg_card_gold"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="CURRENT SLAB"
+                android:textColor="@color/ta_champagne"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSlabPct"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="18sp"
+                android:autoSizeMaxTextSize="32sp"
+                android:text="0%"
+                android:textColor="@color/ta_champagne"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSlabNext"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeMaxTextSize="14sp"
+                android:text="-"
+                android:textColor="#D8DDF2" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Target + Daily Breakdown -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="14dp"
+        android:background="@drawable/bg_card_gold"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TARGET ACHIEVEMENT"
+            android:textColor="@color/ta_champagne"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvCurrentTarget"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="➤ Achieved Target %: 0% (0 AED)"
+            android:textColor="@color/ta_white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/progressTarget"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="10dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/progress_gold" />
+
+        <TextView
+            android:id="@+id/tvNextTarget"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="➤ For the next target you need per day: -"
+            android:textColor="@color/ta_white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="6dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Daily Breakdown (Newest First)"
+                android:textColor="@color/ta_champagne"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btnCurrentMonthMenu"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="10dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="Check &amp; Edit  ⋮"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/ta_champagne" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/dailyContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnAddShift"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:minHeight="52dp"
+        android:text="@string/home_btn_add_shift"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/btnViewReports"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:minHeight="52dp"
+        android:text="View Saved Reports"
+        android:textColor="@color/ta_white"
+        android:textStyle="bold"
+        app:strokeColor="#D4AF37"
+        app:strokeWidth="2dp" />
+
+    <Button
+        android:id="@+id/btnFinalizePeriod"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="52dp"
+        android:text="Finalize &amp; Save This Period"
+        android:textColor="@color/ta_white"
+        android:textStyle="bold"
+        app:strokeColor="#D4AF37"
+        app:strokeWidth="2dp" />
 
             </LinearLayout>
         </ScrollView>

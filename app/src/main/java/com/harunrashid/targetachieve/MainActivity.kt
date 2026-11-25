@@ -37,6 +37,7 @@ import com.harunrashid.targetachieve.logic.PeriodSummary
 import com.harunrashid.targetachieve.logic.SalaryCalculator
 import com.harunrashid.targetachieve.models.PeriodDetailActivity
 import com.harunrashid.targetachieve.models.Report
+import com.harunrashid.targetachieve.models.ReportDay
 import com.harunrashid.targetachieve.models.ShiftRecord
 import com.harunrashid.targetachieve.models.TaxiType
 import com.harunrashid.targetachieve.models.UserProfile
@@ -346,6 +347,7 @@ class MainActivity : AppCompatActivity() {
                     getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("biometric_enabled", false)
 
                 val now = ServerTime.now(this@MainActivity)
+                markActive(key, now)
                 val trialActive = profile.trialExpiryMillis > now
                 val subActive = profile.subscriptionExpiryMillis > now
 
@@ -377,6 +379,16 @@ class MainActivity : AppCompatActivity() {
                 // ignore
             }
         }
+    }
+
+    // অ্যাডমিন প্যানেলের Active/Inactive দেখার জন্য: দিনে একবার "শেষ খোলার সময়" লেখা (খুবই কম খরচ)
+    private fun markActive(key: String, now: Long) {
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val today = now / (24L * 60 * 60 * 1000)
+        val prefKey = "last_active_day_$key"
+        if (prefs.getLong(prefKey, -1L) == today) return
+        db.collection("users").document(key).update("lastActiveMillis", now)
+            .addOnSuccessListener { prefs.edit().putLong(prefKey, today).apply() }
     }
 
     // Email না থাকলে দিনে একবার চাওয়া হয় (পরে Play Store ও অ্যাকাউন্ট উদ্ধারের জন্য)
@@ -429,8 +441,8 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Change Taxi Type")
             .setMessage(
                 "From now on, new shifts will be calculated as ${t.displayName()}.\n\n" +
-                "Days already saved keep their old taxi type and rates, so earlier days will NOT change.\n\n" +
-                "Do you want to continue?"
+                        "Days already saved keep their old taxi type and rates, so earlier days will NOT change.\n\n" +
+                        "Do you want to continue?"
             )
             .setCancelable(false)
             .setPositiveButton("Change") { _, _ -> updateTaxiType(t) }
@@ -510,6 +522,22 @@ class MainActivity : AppCompatActivity() {
 
                 binding.tvTotalCleanMoney.text = "%.0f AED".format(summary.totalCleanMoney)
                 binding.tvTotalSalary.text = "%.0f AED".format(summary.finalSalary)
+                binding.tvTotalDeposit.text = "%.0f AED".format(summary.totalDeposit)
+                binding.tvCleanSub.text = "${summary.workingDays} days worked"
+                binding.tvSalarySub.text = "Tips included: %.0f".format(summary.extraAdd)
+                binding.tvAvgClean.text = "%.0f AED".format(summary.averageClean)
+                binding.tvAvgSub.text =
+                    if (summary.workingDays > 0) "%.0f ÷ %d days".format(summary.totalCleanMoney, summary.workingDays)
+                    else "per working day"
+                binding.tvSlabPct.text = "%.1f%%".format(summary.currentTargetPercent)
+                val nextMin = com.harunrashid.targetachieve.logic.CommissionSlab.nextSlab(summary.averageClean)?.second
+                binding.tvSlabNext.text =
+                    if (summary.nextTargetPercent != null && nextMin != null)
+                        "Next: %.1f%% at %.0f avg".format(summary.nextTargetPercent, nextMin)
+                    else "Highest slab"
+                val topSlab = com.harunrashid.targetachieve.logic.CommissionSlab.TABLE.last().percent
+                binding.progressTarget.progress =
+                    ((summary.currentTargetPercent / topSlab) * 100).toInt().coerceIn(0, 100)
                 binding.tvCurrentTarget.text =
                     "➤ Achieved Target %%: %.1f%% (%.0f AED)".format(summary.currentTargetPercent, summary.finalSalary)
 
@@ -628,7 +656,24 @@ class MainActivity : AppCompatActivity() {
             achievedTargetPercent = summary.currentTargetPercent,
             nextTargetPercent = summary.nextTargetPercent ?: 0.0,
             aedNeededPerDayForNextTarget = summary.aedNeededPerDayForNextTarget ?: 0.0,
-            generatedAtMillis = System.currentTimeMillis()
+            generatedAtMillis = System.currentTimeMillis(),
+            workingDays = summary.workingDays,
+            averageClean = summary.averageClean,
+            shiftTrips = summary.dayResults.sumOf { SalaryCalculator.totalTripsOf(it.record) },
+            bookings = summary.dayResults.sumOf { it.record.bookings },
+            airportTrips = summary.dayResults.sumOf { it.record.airportTrips },
+            totalDeposit = summary.totalDeposit,
+            totalKmHired = summary.dayResults.sumOf { it.record.kmHired },
+            normalTrips = summary.dayResults.sumOf { SalaryCalculator.normalTripsOf(it.record) },
+            days = summary.dayResults.map {
+                ReportDay(
+                    date = it.record.dateString,
+                    clean = it.cleanMoney,
+                    tips = it.record.tips,
+                    avg = it.runningAverage,
+                    deposit = it.deposit
+                )
+            }
         )
 
         lifecycleScope.launch {

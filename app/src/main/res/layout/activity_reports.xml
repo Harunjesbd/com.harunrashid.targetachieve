@@ -3,18 +3,30 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="@color/ta_graphite">
+
+    <!-- Title bar -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/ta_inky_blue"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:text="Saved Reports"
+        android:textColor="@color/ta_champagne"
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/header_bg"
-        android:gravity="center"
-        android:padding="16dp"
-        android:text="Saved Reports"
-        android:textColor="@color/royal_blue"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:text="Latest 12 months are kept. Older reports are removed automatically."
+        android:textColor="#B3FFFFFF"
+        android:textSize="12sp" />
 
     <ProgressBar
         android:id="@+id/progressBar"
@@ -29,8 +41,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="40dp"
         android:gravity="center"
-        android:text="এখনো কোনো রিপোর্ট সেভ করা হয়নি"
-        android:textColor="#888888"
+        android:text="No saved reports yet"
+        android:textColor="#B3FFFFFF"
         android:visibility="gone" />
 
     <ScrollView
@@ -42,7 +54,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp" />
+            android:padding="12dp" />
     </ScrollView>
 
 </LinearLayout>

@@ -1,5 +1,6 @@
 package com.harunrashid.targetachieve.models
 
+import android.app.DatePickerDialog
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -7,6 +8,7 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
+import android.widget.PopupMenu
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -17,10 +19,12 @@ import androidx.lifecycle.lifecycleScope
 import com.google.firebase.firestore.FirebaseFirestore
 import com.harunrashid.targetachieve.databinding.ActivityPeriodDetailBinding
 import com.harunrashid.targetachieve.logic.DayResult
+import com.harunrashid.targetachieve.logic.SalaryCalculator
 import com.harunrashid.targetachieve.profileKey
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 class PeriodDetailActivity : AppCompatActivity() {
@@ -49,6 +53,12 @@ class PeriodDetailActivity : AppCompatActivity() {
         binding.tvSummary.text = intent.getStringExtra("summary")
             ?: "Days: ${sorted.size}   |   Total Clean: %.2f AED".format(Locale.ENGLISH, total)
 
+        val totalDeposit = sorted.sumOf { it.deposit }
+        binding.tvTotalDeposit.text = "Total Deposit: %.2f AED".format(Locale.ENGLISH, totalDeposit)
+
+        val avg = if (sorted.isEmpty()) 0.0 else total / sorted.size
+        binding.tvAvgClean.text = "%.0f".format(Locale.ENGLISH, avg)
+
         showDays()
     }
 
@@ -67,13 +77,28 @@ class PeriodDetailActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight)
         }
 
-    private fun iconBtn(symbol: String, onClick: () -> Unit): TextView =
+    // প্রতিটি সারির শেষে ⋮ বোতাম: চাপলে Edit / Remove মেনু আসে (জায়গা বাঁচাতে)
+    private fun menuBtn(d: DayResult): TextView =
         TextView(this).apply {
-            text = symbol
-            textSize = 16f
+            text = "⋮"
+            textSize = 22f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#E6CF9E"))
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            setOnClickListener { onClick() }
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
+            setOnClickListener { v ->
+                val pm = PopupMenu(this@PeriodDetailActivity, v)
+                pm.menu.add(0, 1, 0, "✏️  Edit")
+                pm.menu.add(0, 2, 1, "🗑️  Remove")
+                pm.setOnMenuItemClickListener { item ->
+                    when (item.itemId) {
+                        1 -> showEditDialog(d)
+                        2 -> confirmDelete(d)
+                    }
+                    true
+                }
+                pm.show()
+            }
         }
 
     private fun showDays() {
@@ -86,10 +111,11 @@ class PeriodDetailActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#232E63"))
             setPadding(dp(8), dp(10), dp(8), dp(10))
             addView(cell("Date", 1.3f, true, false).apply { setTextColor(Color.parseColor("#E6CF9E")) })
-            addView(cell("Clean", 1f, true))
-            addView(cell("Salary", 1f, true))
-            addView(cell("Target", 0.8f, true))
-            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(88), 1) })
+            addView(cell("Deposit", 1.05f, true).apply { setTextColor(Color.parseColor("#E6CF9E")) })
+            addView(cell("Clean", 1f, true).apply { setTextColor(Color.parseColor("#E6CF9E")) })
+            addView(cell("Salary", 0.95f, true).apply { setTextColor(Color.parseColor("#E6CF9E")) })
+            addView(cell("Target", 0.8f, true).apply { setTextColor(Color.parseColor("#E6CF9E")) })
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(36), 1) })
         }
         c.addView(header)
 
@@ -104,12 +130,12 @@ class PeriodDetailActivity : AppCompatActivity() {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(8), dp(8), dp(8), dp(8))
-                addView(cell(d.record.dateString, 1.3f, false, false))
-                addView(cell("%.2f".format(Locale.ENGLISH, d.cleanMoney), 1f))
-                addView(cell("%.2f".format(Locale.ENGLISH, d.dailyEarning), 1f))
-                addView(cell("%.1f%%".format(Locale.ENGLISH, d.slabPercent), 0.8f))
-                addView(iconBtn("✏️") { showEditDialog(d) })
-                addView(iconBtn("🗑️") { confirmDelete(d) })
+                addView(cell(d.record.dateString, 1.3f, true, false).apply { setTextColor(Color.WHITE) })
+                addView(cell("%.2f".format(Locale.ENGLISH, d.deposit), 1.05f, true).apply { setTextColor(Color.parseColor("#E6CF9E")) })
+                addView(cell("%.2f".format(Locale.ENGLISH, d.cleanMoney), 1f, true).apply { setTextColor(Color.WHITE) })
+                addView(cell("%.2f".format(Locale.ENGLISH, d.dailyEarning), 0.95f, true).apply { setTextColor(Color.WHITE) })
+                addView(cell("%.1f%%".format(Locale.ENGLISH, d.slabPercent), 0.8f, true).apply { setTextColor(Color.WHITE) })
+                addView(menuBtn(d))
             }
             c.addView(row)
             c.addView(View(this).apply {
@@ -155,7 +181,7 @@ class PeriodDetailActivity : AppCompatActivity() {
             Triple("Km Hired", "kmHired", r.kmHired.toString()) to false,
             Triple("Km Vacant", "kmVacant", r.kmVacant.toString()) to false,
             Triple("Total Tollways", "totalTollways", r.totalTollways.toString()) to false,
-            Triple("Shift Trips", "shiftTrips", r.shiftTrips.toString()) to true,
+            Triple("Shift Trips", "shiftTrips", (if (r.taxiType == "AIRPORT_TAXI") r.shiftTrips else SalaryCalculator.rawTripsOf(r)).toString()) to true,
             Triple("Bookings", "bookings", r.bookings.toString()) to true,
             Triple("Airport Trips", "airportTrips", r.airportTrips.toString()) to true,
             Triple("Tips", "tips", r.tips.toString()) to false
@@ -166,12 +192,35 @@ class PeriodDetailActivity : AppCompatActivity() {
             setPadding(dp(20), dp(8), dp(20), 0)
         }
         val inputs = mutableListOf<Pair<EditText, Pair<String, Boolean>>>()
+
+        // তারিখ ঠিক করার ঘর: চাপলে ক্যালেন্ডার খোলে
+        box.addView(TextView(this).apply { text = "Date"; textSize = 12f; setPadding(0, dp(8), 0, 0) })
+        val etDate = EditText(this).apply {
+            setText(r.dateString)
+            isFocusable = false
+            isFocusableInTouchMode = false
+            isCursorVisible = false
+            setOnClickListener {
+                val cal = Calendar.getInstance()
+                try { dateFmt.parse(text.toString())?.let { cal.time = it } } catch (_: Exception) {}
+                DatePickerDialog(this@PeriodDetailActivity, { _, y, m, day ->
+                    val c2 = Calendar.getInstance(); c2.set(y, m, day, 0, 0, 0)
+                    setText(dateFmt.format(c2.time))
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+            }
+        }
+        box.addView(etDate)
+
         for ((t, isInt) in fields) {
             box.addView(TextView(this).apply { text = t.first; textSize = 12f; setPadding(0, dp(8), 0, 0) })
             val et = EditText(this).apply {
                 setText(t.third)
                 inputType = if (isInt) InputType.TYPE_CLASS_NUMBER
                 else InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+                // ছুঁলেই পুরো সংখ্যা সিলেক্ট হয়
+                setSelectAllOnFocus(true)
+                setOnFocusChangeListener { v, hasFocus -> if (hasFocus) (v as EditText).post { v.selectAll() } }
+                setOnClickListener { (it as EditText).selectAll() }
             }
             box.addView(et)
             inputs.add(et to (t.second to isInt))
@@ -185,21 +234,47 @@ class PeriodDetailActivity : AppCompatActivity() {
                 val map = HashMap<String, Any>()
                 for ((et, meta) in inputs) {
                     val txt = et.text.toString().trim().replace(',', '.')
-                    map[meta.first] = if (meta.second) (txt.toIntOrNull() ?: 0) else (txt.toDoubleOrNull() ?: 0.0)
+                    map[meta.first] = if (meta.second) (txt.toIntOrNull() ?: 0).coerceAtLeast(0) else (txt.toDoubleOrNull() ?: 0.0).coerceAtLeast(0.0)
                 }
-                saveEdit(r.dateString, map)
+                map["tripsNet"] = false  // Shift Trips ঘর = রসিদের আসল সংখ্যা
+                val newDate = etDate.text.toString().trim()
+                val ok = try {
+                    val f = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH); f.isLenient = false; f.parse(newDate) != null
+                } catch (e: Exception) { false }
+                if (!ok) {
+                    Toast.makeText(this, "Invalid date (use dd-MM-yyyy)", Toast.LENGTH_LONG).show()
+                } else {
+                    saveEdit(r.dateString, newDate, map)
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun saveEdit(dateString: String, map: Map<String, Any>) {
+    // তারিখ বদলালে: নতুন তারিখে ডকুমেন্ট বানিয়ে পুরনোটা মুছে ফেলা হয় (ওই তারিখে আগে থেকে শিফট থাকলে বন্ধ)
+    private fun saveEdit(oldDate: String, newDate: String, map: Map<String, Any>) {
         val key = profileKey() ?: return
         lifecycleScope.launch {
             try {
-                db.collection("users").document(key)
-                    .collection("shifts").document(dateString)
-                    .update(map).await()
+                val col = db.collection("users").document(key).collection("shifts")
+                if (newDate == oldDate) {
+                    col.document(oldDate).update(map).await()
+                } else {
+                    val exists = col.document(newDate).get().await().exists()
+                    if (exists) {
+                        Toast.makeText(this@PeriodDetailActivity,
+                            "$newDate তারিখে আগে থেকেই শিফট আছে। অন্য তারিখ দিন।", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    val old = col.document(oldDate).get().await()
+                    val data = HashMap<String, Any?>(old.data ?: emptyMap())
+                    data.putAll(map)
+                    data["dateString"] = newDate
+                    val batch = db.batch()
+                    batch.set(col.document(newDate), data)
+                    batch.delete(col.document(oldDate))
+                    batch.commit().await()
+                }
                 Toast.makeText(this@PeriodDetailActivity, "Saved", Toast.LENGTH_SHORT).show()
                 finish()
             } catch (e: Exception) {

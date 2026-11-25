@@ -22,25 +22,29 @@ object MlKitOcrHelper {
         allLines.sortBy { line -> line.boundingBox?.top ?: 0 }
 
         val rows = mutableListOf<MutableList<Text.Line>>()
+        val rowCenters = mutableListOf<Double>()   // সারির গড় Y (রসিদ হালকা বাঁকা হলেও সারি ঠিক থাকে)
+        val rowHeights = mutableListOf<Double>()
 
-        // ৩. একই Y-axis সমান্তরালে থাকা লাইনগুলোকে একটি 'Row' বা সারিতে গ্রুপ করা
         for (line in allLines) {
             val box = line.boundingBox ?: continue
-            var addedToExistingRow = false
+            val c = (box.top + box.bottom) / 2.0
+            val h = box.height().coerceAtLeast(1).toDouble()
 
-            for (row in rows) {
-                val firstLineInRowBox = row.first().boundingBox ?: continue
-
-                // যদি দুইটি লাইনের ভার্টিকাল পজিশন কাছাকাছি হয় (সহনশীলতা / Tolerance thresholds)
-                if (isSameRow(box, firstLineInRowBox)) {
-                    row.add(line)
-                    addedToExistingRow = true
-                    break
-                }
+            var best = -1
+            var bestDist = Double.MAX_VALUE
+            for (i in rows.indices) {
+                val dist = Math.abs(rowCenters[i] - c)
+                if (dist < bestDist) { bestDist = dist; best = i }
             }
-
-            if (!addedToExistingRow) {
+            if (best >= 0 && bestDist < ((rowHeights[best] + h) / 2.0) * 0.45) {
+                val n = rows[best].size
+                rows[best].add(line)
+                rowCenters[best] = (rowCenters[best] * n + c) / (n + 1)
+                rowHeights[best] = (rowHeights[best] * n + h) / (n + 1)
+            } else {
                 rows.add(mutableListOf(line))
+                rowCenters.add(c)
+                rowHeights.add(h)
             }
         }
 

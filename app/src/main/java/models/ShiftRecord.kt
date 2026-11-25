@@ -28,5 +28,8 @@ data class ShiftRecord(
     // এই দিনের Taxi type ("SHIFT_TAXI" / "AIRPORT_TAXI"); ফাঁকা থাকলে প্রথমবার চালুর সময় নিজে বসে যায়
     val taxiType: String = "",
 
+    // true হলে shiftTrips = সাধারণ ট্রিপ (রসিদের Shift Trips − Bookings আগেই বাদ); false = পুরনো রেকর্ড (রসিদের মোট)
+    val tripsNet: Boolean = false,
+
     val createdAtMillis: Long = 0L
 )

@@ -55,6 +55,8 @@ class AddShiftActivity : AppCompatActivity() {
     private var isAirport = false   // Airport Taxi হলে: Bookings = 0 (লক), Shift Trips ঘর = সাধারণ ৩ AED ট্রিপ, Airport Trips ঘর = ২০ AED ট্রিপ
     private var alertView: TextView? = null
     private var blinkAnim: ObjectAnimator? = null
+    private var lastOcrText: String = ""   // ডিবাগ: "Data loaded" লেখায় অনেকক্ষণ চেপে ধরলে দেখা যায়
+    private var tripsMismatch = false       // রসিদে Bookings > Shift Trips পড়া হলে true (OCR ভুল সম্ভব)
 
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
@@ -83,12 +85,63 @@ class AddShiftActivity : AppCompatActivity() {
 
     private fun loadBitmapFromUri(uri: Uri): Bitmap? {
         return try {
-            contentResolver.openInputStream(uri)?.use { inputStream ->
-                android.graphics.BitmapFactory.decodeStream(inputStream)
+            val raw = contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it) }
+                ?: return null
+            // ক্যামেরা ছবির ঘোরানো তথ্য (EXIF) ফোন যেভাবে ধরা ছিল সেভাবে সোজা করা
+            val orient = try {
+                contentResolver.openInputStream(uri)?.use {
+                    android.media.ExifInterface(it).getAttributeInt(
+                        android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL)
+                } ?: android.media.ExifInterface.ORIENTATION_NORMAL
+            } catch (e: Exception) { android.media.ExifInterface.ORIENTATION_NORMAL }
+            val deg = when (orient) {
+                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
             }
+            if (deg == 0f) raw else rotateBitmap(raw, deg)
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    private fun rotateBitmap(src: Bitmap, degrees: Float): Bitmap {
+        if (degrees == 0f) return src
+        val m = android.graphics.Matrix().apply { postRotate(degrees) }
+        return Bitmap.createBitmap(src, 0, 0, src.width, src.height, m, true)
+    }
+
+    // রসিদের চেনা শব্দ কতগুলো পড়া গেল (ছবি সোজা কিনা বোঝার জন্য)
+    private fun ocrScore(text: String): Int {
+        val t = text.lowercase().replace(Regex("\\s+"), "")
+        return listOf("shift", "total", "trips", "book", "toll", "hired", "careem", "credit", "cash", "summary")
+            .count { t.contains(it) }
+    }
+
+    // ছবি আড়াআড়ি (landscape) হলে ০°, ৯০°, ২৭০° ঘুরিয়ে OCR চালিয়ে সবচেয়ে ভালো পড়া হয় যেটাতে সেটা নেওয়া হয়
+    private fun pickUpright(
+        bmp: Bitmap,
+        recognizer: com.google.mlkit.vision.text.TextRecognizer,
+        done: (Bitmap) -> Unit
+    ) {
+        if (bmp.width <= bmp.height) { done(bmp); return }
+        val rots = listOf(0f, 90f, 270f)
+        val scores = IntArray(rots.size) { -1 }
+        var finished = 0
+        rots.forEachIndexed { idx, r ->
+            val b = rotateBitmap(bmp, r)
+            recognizer.process(InputImage.fromBitmap(b, 0))
+                .addOnSuccessListener { vt -> scores[idx] = ocrScore(MlKitOcrHelper.reconstructRows(vt)) }
+                .addOnCompleteListener {
+                    finished++
+                    if (finished == rots.size) {
+                        var best = 0
+                        for (i in rots.indices) if (scores[i] > scores[best]) best = i
+                        done(rotateBitmap(bmp, rots[best]))
+                    }
+                }
         }
     }
 
@@ -105,6 +158,7 @@ class AddShiftActivity : AppCompatActivity() {
         binding = ActivityAddShiftBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         hideUnusedFields()
         updateDateLabel()
 
@@ -194,10 +248,12 @@ class AddShiftActivity : AppCompatActivity() {
             setBackgroundColor(0xFFFFC107.toInt())
             text = if (isAirport) {
                 "⚠ AIRPORT TAXI: Please correct the trips!\n" +
-                        "• Shift Trips box = NORMAL trips only (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).normalTripRate)} AED each)\n" +
+                        "• Shift Trips box = NORMAL trips only (receipt Shift Trips − Bookings) (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).normalTripRate)} AED each)\n" +
                         "• Airport Trips box = AIRPORT trips (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).airportTripRate)} AED each)"
             } else {
-                "⚠ SHIFT TAXI: Please correct the trips!\n" +
+                (if (tripsMismatch) "❗ Check Shift Trips / Bookings on the receipt: Shift Trips is 0 or smaller than Bookings + Airport. Rule: Shift Trips = Bookings + Airport + Normal. Normal trips cannot be minus (counted as 0).\n" else "") +
+                "⚠ SHIFT TAXI: Please check the trips!\n" +
+                        "• Shift Trips & Bookings boxes = numbers printed on the receipt\n" +
                         "• Airport Trips box = AIRPORT trips (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).airportTripRate)} AED each)"
             }
         }
@@ -255,7 +311,7 @@ class AddShiftActivity : AppCompatActivity() {
     private fun showPhotoGuideline(onContinue: () -> Unit) {
         AlertDialog.Builder(this)
             .setTitle("Photo Tip")
-            .setMessage("অনুগ্রহ করে রসিদ সোজা করে এবং উজ্জ্বল আলোতে তুলুন।\n\nPlease take the photo straight and under bright light.")
+            .setMessage("মোবাইল সোজা (Portrait) ধরে, রসিদ সোজা করে, উজ্জ্বল আলোতে ছবি তুলুন। মোবাইল আড়াআড়ি (Landscape) ধরবেন না।\n\nHold the phone upright (Portrait), keep the receipt straight, bright light.")
             .setPositiveButton("OK, Continue") { _, _ -> onContinue() }
             .setNegativeButton("Cancel", null)
             .show()
@@ -291,12 +347,20 @@ class AddShiftActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun runOcr(bitmap: Bitmap) {
+    private fun runOcr(original: Bitmap) {
         binding.progressBar.visibility = View.VISIBLE
         binding.tvOcrStatus.text = "Reading data from image..."
 
-        val image = InputImage.fromBitmap(bitmap, 0)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        pickUpright(original, recognizer) { upright ->
+            currentBitmap = upright
+            binding.ivPreview.setImageBitmap(upright)
+            startOcr(upright, recognizer)
+        }
+    }
+
+    private fun startOcr(bitmap: Bitmap, recognizer: com.google.mlkit.vision.text.TextRecognizer) {
+        val image = InputImage.fromBitmap(bitmap, 0)
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
@@ -307,12 +371,25 @@ class AddShiftActivity : AppCompatActivity() {
                 // ডিবাগের জন্য শুধু Logcat এ থাকে, ব্যবহারকারীকে দেখানো হয় না
                 Log.d("OCR_RAW", "===== START =====\n$mlKitText\n===== END =====")
 
-                val parsed = ShiftTextParser.parse(mlKitText, dateString)
-                fillForm(parsed)
-                binding.progressBar.visibility = View.GONE
-                binding.tvOcrStatus.text = "Data loaded - please check and edit if needed"
-                showTripAlert()
-                binding.formContainer.visibility = View.VISIBLE
+                lastOcrText = mlKitText
+                val first = ShiftTextParser.parse(mlKitText, dateString)
+
+                // Shift Trips পড়া না গেলে, বা Bookings+Airport মোটের চেয়ে বেশি দেখালে (সংখ্যা ভুল পড়ার লক্ষণ) দ্বিতীয়বার পড়া হয়
+                val suspicious = first.shiftTrips == 0 || first.bookings + first.airportTrips > first.shiftTrips
+                if (suspicious) {
+                    // Shift Trips পড়া যায়নি: ছবি বড় ও স্পষ্ট করে দ্বিতীয়বার পড়া হয়, তারপর দুই ফল মেলানো হয়
+                    binding.tvOcrStatus.text = "Reading again for better accuracy..."
+                    val big = enhanceForOcr(bitmap)
+                    recognizer.process(InputImage.fromBitmap(big, 0))
+                        .addOnSuccessListener { vt2 ->
+                            val text2 = MlKitOcrHelper.reconstructRows(vt2)
+                            lastOcrText = mlKitText + "\n----- PASS 2 -----\n" + text2
+                            finishOcr(mergeRecords(first, ShiftTextParser.parse(text2, dateString)))
+                        }
+                        .addOnFailureListener { finishOcr(first) }
+                } else {
+                    finishOcr(first)
+                }
             }
             .addOnFailureListener { e ->
                 binding.progressBar.visibility = View.GONE
@@ -323,12 +400,102 @@ class AddShiftActivity : AppCompatActivity() {
             }
     }
 
+    private fun finishOcr(parsed: ShiftRecord) {
+        fillForm(parsed)
+        binding.progressBar.visibility = View.GONE
+        binding.tvOcrStatus.text = "Data loaded - please check and edit if needed"
+        binding.tvOcrStatus.setOnLongClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("OCR raw text (debug)")
+                .setMessage(lastOcrText)
+                .setPositiveButton("Copy") { _, _ ->
+                    val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("ocr", lastOcrText))
+                    Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Close", null)
+                .show()
+            true
+        }
+        showTripAlert()
+        binding.formContainer.visibility = View.VISIBLE
+    }
+
+    // প্রথম পাসে ০ আসা ঘরে দ্বিতীয় পাসের মান বসানো হয়
+    private fun mergeRecords(a: ShiftRecord, b: ShiftRecord): ShiftRecord = a.copy(
+        driverNo = a.driverNo.ifEmpty { b.driverNo },
+        shiftTotal = if (a.shiftTotal != 0.0) a.shiftTotal else b.shiftTotal,
+        totalSharjah = if (a.totalSharjah != 0.0) a.totalSharjah else b.totalSharjah,
+        totalTollways = if (a.totalTollways != 0.0) a.totalTollways else b.totalTollways,
+        // যে সংখ্যাটা Bookings-এর চেয়ে কম নয় (সম্ভব) সেটাকে অগ্রাধিকার
+        shiftTrips = run {
+            val bk = maxOf(a.bookings, b.bookings)
+            when {
+                a.shiftTrips != 0 && a.shiftTrips >= bk -> a.shiftTrips
+                b.shiftTrips != 0 && b.shiftTrips >= bk -> b.shiftTrips
+                a.shiftTrips != 0 -> a.shiftTrips
+                else -> b.shiftTrips
+            }
+        },
+        bookings = if (a.bookings != 0) a.bookings else b.bookings,
+        airportTrips = if (a.airportTrips != 0) a.airportTrips else b.airportTrips,
+        kmHired = if (a.kmHired != 0.0) a.kmHired else b.kmHired,
+        kmVacant = if (a.kmVacant != 0.0) a.kmVacant else b.kmVacant,
+        paidInCareem = if (a.paidInCareem != 0.0) a.paidInCareem else b.paidInCareem,
+        halaPeak = if (a.halaPeak != 0.0) a.halaPeak else b.halaPeak,
+        tips = if (a.tips != 0.0) a.tips else b.tips
+    )
+
+    // ছবি বড় + সাদা-কালো + বেশি কনট্রাস্ট (ছোট সংখ্যা OCR-এ ভালো ওঠে)
+    private fun enhanceForOcr(src: Bitmap): Bitmap {
+        val scale = (2600f / maxOf(src.width, src.height)).coerceIn(1f, 2.5f)
+        val w = (src.width * scale).toInt()
+        val h = (src.height * scale).toInt()
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val cm = android.graphics.ColorMatrix().apply { setSaturation(0f) }
+        val k = 1.7f
+        val t = (-0.5f * k + 0.5f) * 255f
+        cm.postConcat(android.graphics.ColorMatrix(floatArrayOf(
+            k, 0f, 0f, 0f, t,
+            0f, k, 0f, 0f, t,
+            0f, 0f, k, 0f, t,
+            0f, 0f, 0f, 1f, 0f
+        )))
+        val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = android.graphics.ColorMatrixColorFilter(cm)
+        }
+        android.graphics.Canvas(out).drawBitmap(src, null, android.graphics.Rect(0, 0, w, h), paint)
+        return out
+    }
+
+    // বক্সে ছুঁলেই পুরো সংখ্যা সিলেক্ট হয়, নতুন সংখ্যা লিখলেই বদলে যায়
+    private fun selectAllOnTouch(vararg boxes: android.widget.EditText) {
+        for (et in boxes) {
+            et.setSelectAllOnFocus(true)
+            et.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) (v as android.widget.EditText).post { v.selectAll() }
+            }
+            et.setOnClickListener { (it as android.widget.EditText).selectAll() }
+        }
+    }
+
     private fun fillForm(record: ShiftRecord) {
+        selectAllOnTouch(
+            binding.etPlateNo, binding.etShiftTotal, binding.etTotalSharjah, binding.etTotalTollways,
+            binding.etShiftTrips, binding.etBookings, binding.etAirportTrips, binding.etKmHired,
+            binding.etKmVacant, binding.etPaidInCareem, binding.etHalaPeak, binding.etTips
+        )
         binding.etPlateNo.setText(record.driverNo)
         binding.etShiftTotal.setText(record.shiftTotal.toString())
         binding.etTotalSharjah.setText(record.totalSharjah.toString())
         binding.etTotalTollways.setText(record.totalTollways.toString())
-        binding.etShiftTrips.setText(record.shiftTrips.toString())
+        // রসিদে যা ছাপা আছে তাই বসে (Shift Trips ও Bookings আলাদাভাবে গোনা)
+        // Shift Taxi: দুই ঘরেই রসিদের আসল সংখ্যা। Airport Taxi: রসিদের Bookings = Airport ট্রিপ, তাই সাধারণ ট্রিপ = Shift Trips − Bookings
+        val shiftBox = if (isAirport) (record.shiftTrips - record.bookings).coerceAtLeast(0) else record.shiftTrips
+        binding.etShiftTrips.setText(shiftBox.toString())
+        // রসিদ পড়ায় সমস্যা: Shift Trips পড়া যায়নি, বা Bookings (+Airport) মোটের চেয়ে বেশি
+        tripsMismatch = record.shiftTrips == 0 ||
+                (if (isAirport) record.bookings else record.bookings + record.airportTrips) > record.shiftTrips
         // Airport Taxi: Bookings = 0, বুকিংয়ের সংখ্যা Airport Trips ঘরে বসে (ড্রাইভার পরে ঠিক করে দেবে)
         binding.etBookings.setText(if (isAirport) "0" else record.bookings.toString())
         binding.etAirportTrips.setText(if (isAirport) record.bookings.toString() else record.airportTrips.toString())
@@ -341,16 +508,16 @@ class AddShiftActivity : AppCompatActivity() {
 
     // সেভের আগে ড্রাইভারকে ট্রিপের সংখ্যা নিশ্চিত করতে হয় (Shift ও Airport দুই Taxi type-এই)
     private fun saveShift() {
-        val shiftTrips = binding.etShiftTrips.text.toString().toIntOrNull() ?: 0
-        val bookings = binding.etBookings.text.toString().toIntOrNull() ?: 0
-        val airport = binding.etAirportTrips.text.toString().toIntOrNull() ?: 0
+        val shiftTrips = binding.etShiftTrips.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0
+        val bookings = binding.etBookings.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0
+        val airport = binding.etAirportTrips.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0
 
         val msg = if (isAirport) {
             "Normal trips (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).normalTripRate)} AED each): $shiftTrips\n" +
                     "Airport trips (${rate(RateProvider.activeFor(TaxiType.AIRPORT_TAXI).airportTripRate)} AED each): $airport\n\n" +
                     "Are these correct?"
         } else {
-            val normal = (shiftTrips - bookings).coerceAtLeast(0)
+            val normal = (shiftTrips - bookings - airport).coerceAtLeast(0)
             "Normal trips (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).normalTripRate)} AED each): $normal\n" +
                     "Bookings (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).bookingRate)} AED each): $bookings\n" +
                     "Airport trips (${rate(RateProvider.activeFor(TaxiType.SHIFT_TAXI).airportTripRate)} AED each): $airport\n\n" +
@@ -373,26 +540,27 @@ class AddShiftActivity : AppCompatActivity() {
 
         val dateString = sdf.format(selectedDate.time)
 
-        val enteredBookings = binding.etBookings.text.toString().toIntOrNull() ?: 0
-        val enteredAirport = binding.etAirportTrips.text.toString().toIntOrNull() ?: 0
+        val enteredBookings = binding.etBookings.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0
+        val enteredAirport = binding.etAirportTrips.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0
         val bookingsValue = if (isAirport) 0 else enteredBookings
         val airportValue = enteredAirport
 
         val record = ShiftRecord(
             dateString = dateString,
             driverNo = binding.etPlateNo.text.toString().trim(),
-            shiftTotal = binding.etShiftTotal.text.toString().toDoubleOrNull() ?: 0.0,
-            totalSharjah = binding.etTotalSharjah.text.toString().toDoubleOrNull() ?: 0.0,
-            totalTollways = binding.etTotalTollways.text.toString().toDoubleOrNull() ?: 0.0,
-            shiftTrips = binding.etShiftTrips.text.toString().toIntOrNull() ?: 0,
+            shiftTotal = binding.etShiftTotal.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            totalSharjah = binding.etTotalSharjah.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            totalTollways = binding.etTotalTollways.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            shiftTrips = binding.etShiftTrips.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0,
             bookings = bookingsValue,
+            tripsNet = false,
             taxiType = (if (isAirport) TaxiType.AIRPORT_TAXI else TaxiType.SHIFT_TAXI).name,
             airportTrips = airportValue,
-            kmHired = binding.etKmHired.text.toString().toDoubleOrNull() ?: 0.0,
-            kmVacant = binding.etKmVacant.text.toString().toDoubleOrNull() ?: 0.0,
-            paidInCareem = binding.etPaidInCareem.text.toString().toDoubleOrNull() ?: 0.0,
-            halaPeak = binding.etHalaPeak.text.toString().toDoubleOrNull() ?: 0.0,
-            tips = binding.etTips.text.toString().toDoubleOrNull() ?: 0.0,
+            kmHired = binding.etKmHired.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            kmVacant = binding.etKmVacant.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            paidInCareem = binding.etPaidInCareem.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            halaPeak = binding.etHalaPeak.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            tips = binding.etTips.text.toString().toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
             createdAtMillis = System.currentTimeMillis()
         )
 

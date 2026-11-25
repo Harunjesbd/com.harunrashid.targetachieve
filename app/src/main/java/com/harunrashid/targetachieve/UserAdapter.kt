@@ -27,6 +27,7 @@ class UserAdapter(private var items: List<UserModel>) : RecyclerView.Adapter<Use
         val email: TextView = v.findViewById(R.id.tvAdminEmail)
         val driver: TextView = v.findViewById(R.id.tvAdminDriver)
         val opened: TextView = v.findViewById(R.id.tvAdminOpened)
+        val lastSeen: TextView = v.findViewById(R.id.tvAdminLastSeen)
         val status: TextView = v.findViewById(R.id.tvAdminStatus)
         val expires: TextView = v.findViewById(R.id.tvAdminExpires)
         val add30: Button = v.findViewById(R.id.btnAdd30)
@@ -60,6 +61,24 @@ class UserAdapter(private var items: List<UserModel>) : RecyclerView.Adapter<Use
         h.driver.text = "🚕 Driver No: ${u.driverId}   |   ID: ${u.id}"
         val opened = u.openedMillis()
         h.opened.text = "📅 Opened: " + (if (opened > 0) sdf.format(opened) else "—")
+
+        // শেষ কবে অ্যাপ খুলেছে
+        when {
+            u.lastActiveMillis <= 0L -> {
+                h.lastSeen.text = "⚪ Last seen: not tracked yet"
+                h.lastSeen.setTextColor(0xFF9E9E9E.toInt())
+            }
+            AdminActivity.isActive(u, now) -> {
+                val d = (now - u.lastActiveMillis) / DAY
+                h.lastSeen.text = "🟢 Active" + (if (d <= 0L) " (today)" else " ($d days ago)")
+                h.lastSeen.setTextColor(0xFF4CAF50.toInt())
+            }
+            else -> {
+                val d = (now - u.lastActiveMillis) / DAY
+                h.lastSeen.text = "🔴 Inactive: $d days (last " + sdf.format(u.lastActiveMillis) + ")"
+                h.lastSeen.setTextColor(0xFFEF5350.toInt())
+            }
+        }
 
         val label = statusOf(u, now)
         val expiry = when (label) {

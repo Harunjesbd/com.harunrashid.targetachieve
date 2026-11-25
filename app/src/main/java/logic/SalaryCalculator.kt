@@ -14,7 +14,8 @@ data class DayResult(
     val runningTotal: Double,
     val runningAverage: Double,
     val slabPercent: Double,
-    val dailyEarning: Double
+    val dailyEarning: Double,
+    val deposit: Double = 0.0     // ওই দিনের Deposit = Shift Total − Tips + Paid in Careem − Hala Peak
 )
 
 // পুরো পিরিয়ডের সারসংক্ষেপ
@@ -28,7 +29,10 @@ data class PeriodSummary(
     val currentTargetPercent: Double,
     val nextTargetPercent: Double?,
     val aedNeededPerDayForNextTarget: Double?,
-    val remainingWorkDays: Int = 0   // হিসাবে ধরা বাকি কাজের দিন
+    val remainingWorkDays: Int = 0,  // হিসাবে ধরা বাকি কাজের দিন
+    val averageClean: Double = 0.0,  // দৈনিক গড় Clean Money (মোট Clean ÷ কাজের দিন)
+    val workingDays: Int = 0,        // কত দিন কাজ হয়েছে
+    val totalDeposit: Double = 0.0   // পিরিয়ডের মোট Deposit
 )
 
 object SalaryCalculator {
@@ -45,9 +49,33 @@ object SalaryCalculator {
     fun typeFor(record: ShiftRecord, fallback: TaxiType): TaxiType =
         try { TaxiType.valueOf(record.taxiType) } catch (e: Exception) { fallback }
 
+    // Deposit = Shift Total − Tips + Paid in Careem − Hala Peak  (Clean Money-র "Add" অংশ, খরচ বাদ দেওয়ার আগে)
+    fun depositFor(record: ShiftRecord): Double =
+        (record.shiftTotal - record.tips.coerceAtLeast(0.0) + record.paidInCareem - record.halaPeak).coerceAtLeast(0.0)
+
+    // রসিদের আসল Shift Trips (মোট)। মাঝের কিছুদিনে সেভ হওয়া tripsNet রেকর্ডে Bookings আবার যোগ করে ফেরানো হয়
+    fun rawTripsOf(record: ShiftRecord): Int =
+        if (record.tripsNet && record.taxiType != TaxiType.AIRPORT_TAXI.name) record.shiftTrips + record.bookings
+        else record.shiftTrips
+
+    // নিয়ম: Shift Trips = Bookings + Airport + Normal  ⇒  Normal = Shift Trips − Bookings − Airport (০-এর নিচে নামে না)
+    fun shiftNormalTrips(record: ShiftRecord): Int =
+        (rawTripsOf(record) - record.bookings - record.airportTrips).coerceAtLeast(0)
+
+    // সাধারণ ট্রিপ: Airport Taxi-তে Shift Trips ঘরই সাধারণ ট্রিপ (Airport ট্রিপ আলাদা ঘরে)
+    fun normalTripsOf(record: ShiftRecord): Int =
+        if (record.taxiType == TaxiType.AIRPORT_TAXI.name) record.shiftTrips.coerceAtLeast(0)
+        else shiftNormalTrips(record)
+
+    // রিপোর্টের জন্য মোট ট্রিপ: Airport Taxi-তে সাধারণ + Airport ট্রিপ
+    fun totalTripsOf(record: ShiftRecord): Int =
+        if (record.taxiType == TaxiType.AIRPORT_TAXI.name) record.shiftTrips + record.airportTrips
+        else rawTripsOf(record)
+
     fun cleanMoneyFor(record: ShiftRecord, fallbackType: TaxiType): Double {
         val taxiType = typeFor(record, fallbackType)
-        val add = record.shiftTotal + record.paidInCareem - record.halaPeak
+        // Shift Total-এর ভেতরে Tips থাকে; Tips সরাসরি বেতনে আলাদা যোগ হয়, তাই Clean Money থেকে বাদ
+        val add = (record.shiftTotal - record.tips.coerceAtLeast(0.0) + record.paidInCareem - record.halaPeak).coerceAtLeast(0.0)
         val isAirport = taxiType == TaxiType.AIRPORT_TAXI
 
         val bookingsCharged: Int
@@ -62,7 +90,7 @@ object SalaryCalculator {
         } else {
             // Shift Taxi: সাধারণ ট্রিপ = Shift Trips − Bookings; Airport ট্রিপ রসিদ থেকে
             bookingsCharged = record.bookings
-            normalTrips = (record.shiftTrips - record.bookings).coerceAtLeast(0)
+            normalTrips = shiftNormalTrips(record)
             airportTrips = record.airportTrips
         }
 
@@ -73,7 +101,8 @@ object SalaryCalculator {
                 (bookingsCharged * rates.bookingRate) +
                 (normalTrips * rates.normalTripRate) +
                 (airportTrips * rates.airportTripRate)
-        return add - minus
+        // আয় ছাড়া কর্তন হয় না: Clean Money কখনো মাইনাস হবে না
+        return (add - minus).coerceAtLeast(0.0)
     }
 
     // আজ থেকে পিরিয়ড শেষ (২০ তারিখ) পর্যন্ত বাকি দিন (আজকে ধরে)
@@ -110,7 +139,8 @@ object SalaryCalculator {
                     runningTotal = runningTotal,
                     runningAverage = average,
                     slabPercent = slabPercent,
-                    dailyEarning = clean * (slabPercent / 100.0)
+                    dailyEarning = clean * (slabPercent / 100.0),
+                    deposit = depositFor(record)
                 )
             )
         }
@@ -156,7 +186,10 @@ object SalaryCalculator {
             currentTargetPercent = slabAll,
             nextTargetPercent = nextSlab?.first,
             aedNeededPerDayForNextTarget = aedPerDayNeeded,
-            remainingWorkDays = remainingWork
+            remainingWorkDays = remainingWork,
+            averageClean = averageAll,
+            workingDays = days,
+            totalDeposit = dayResults.sumOf { it.deposit }
         )
     }
 }

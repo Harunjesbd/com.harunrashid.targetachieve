@@ -16,7 +16,7 @@ object ShiftTextParser {
         'o' to "[o0]", '0' to "[o0]", 'l' to "[li1|]", 'i' to "[il1|]", '1' to "[1il|]",
         'e' to "[ec]", 'c' to "[ce]", 'h' to "[hn]", 'n' to "[nhmr]", 'm' to "[mn]",
         'a' to "[ao]", 's' to "[s5]", 't' to "[tf]", 'r' to "[rn]", 'u' to "[uv]",
-        'v' to "[vu]", 'd' to "[do]", 'k' to "[kx]", 'b' to "[bh]", 'g' to "[g9q]"
+        'v' to "[vu]", 'w' to "[wh]", 'y' to "[yv]", 'd' to "[do]", 'k' to "[kx]", 'b' to "[bh]", 'g' to "[g9q]"
     )
 
     private fun fuzzy(label: String): Regex =
@@ -27,7 +27,16 @@ object ShiftTextParser {
     private val AMOUNT = Regex("""(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+[.,]\d{1,2}|\d+)""")
 
     private fun cleanValue(s: String): String {
-        val t = KM.replace(AED.replace(s, ""), "")
+        val t0 = KM.replace(AED.replace(s, ""), "")
+        // আসল অঙ্ক না থাকলে কিছুই নয় (লেবেলের বাড়তি অক্ষর "s"/"y" যেন 5 না হয়ে যায়)
+        var st = t0.indexOfFirst { it.isDigit() }
+        if (st < 0) return ""
+        // "o.50" / "l8" ধরনের শুরুর OCR-ভুল অক্ষর (শুধু দশমিক চিহ্নের ঠিক আগে) রাখা হয়
+        if (st > 0 && t0[st - 1] in ".,") {
+            st -= 1
+            if (st > 0 && t0[st - 1] in "ol|i") st -= 1
+        }
+        val t = t0.substring(st)
         return t.map {
             when (it) { 'o' -> '0'; 'l' -> '1'; 'i' -> '1'; '|' -> '1'; 's' -> '5'; 'z' -> '2'; else -> it }
         }.joinToString("")
@@ -64,6 +73,15 @@ object ShiftTextParser {
                 if (v == null && i + 1 < lines.size && valueOnly(lines[i + 1])) {
                     v = numberFrom(lines[i + 1], kind)
                 }
+                // মান আলাদা সারিতে ছিটকে গেলে (OCR) পরের ২টি সারিতেও শুধু-সংখ্যার সারি খোঁজা হয় (শুধু পূর্ণসংখ্যা)
+                if (v == null && kind == Kind.INT) {
+                    for (k in 2..3) {
+                        if (i + k < lines.size && lines[i + k].none { it.isLetter() } && valueOnly(lines[i + k])) {
+                            v = numberFrom(lines[i + k], kind); break
+                        }
+                        if (i + k < lines.size && lines[i + k].any { it.isLetter() }) break
+                    }
+                }
                 if (v != null) return v
             }
         }
@@ -96,10 +114,10 @@ object ShiftTextParser {
             shiftTotal = Math.round((totalAmount - shiftDiscount) * 100.0) / 100.0
         }
 
-        var shiftTrips = n(lines, "shifttrips", "hifttrip", "ifttrips")
-        var bookings = n(lines, "bookings", "bookin", "ooking")
-        // Bookings কখনো Shift Trips এর বেশি হতে পারে না (OCR ভুল ধরা)
-        if (shiftTrips > 0 && bookings > shiftTrips) bookings = 0
+        val shiftTrips = n(lines, "shifttrips", "hifttrip", "ifttrips", "shifttrip")
+        val bookings = n(lines, "bookings", "bookin", "ooking", "bookng", "bokings")
+        // Bookings > Shift Trips হলে একটা সংখ্যা ভুল পড়া হয়েছে; কিছু মুছে না ফেলে দুটোই রাখা হয়,
+        // AddShiftActivity ড্রাইভারকে সতর্কতা দেখায়।
 
         return ShiftRecord(
             dateString = dateString,
@@ -110,7 +128,7 @@ object ShiftTextParser {
             creditCards = d(lines, "creditcards", "reditcard"),
             cash = d(lines, "cash"),
             totalSharjah = d(lines, "sharjah", "harjah"),
-            totalTollways = d(lines, "tollways", "tollway", "ollway"),
+            totalTollways = d(lines, "totaltollways", "tollways", "tollway", "ollway", "tollwa", "olways", "tolways"),
             totalAmount = totalAmount,
             shiftTotal = shiftTotal,
             shiftTrips = shiftTrips,
