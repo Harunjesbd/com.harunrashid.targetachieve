@@ -84,6 +84,15 @@ class PaywallActivity : AppCompatActivity() {
 
     private fun activateKey(key: String) {
         val uid = profileKey() ?: return
+
+        // ভুল কোড বারবার দিলে আটকানো: ৫ বার ভুল হলে ১০ মিনিট বন্ধ
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val lockUntil = prefs.getLong("key_lock_until", 0L)
+        if (lockUntil > System.currentTimeMillis()) {
+            val mins = ((lockUntil - System.currentTimeMillis()) / 60000L) + 1
+            Toast.makeText(this, "অনেকবার ভুল হয়েছে। $mins মিনিট পরে চেষ্টা করুন।", Toast.LENGTH_LONG).show()
+            return
+        }
         binding.progressBar.visibility = View.VISIBLE
         binding.btnActivate.isEnabled = false
 
@@ -94,6 +103,9 @@ class PaywallActivity : AppCompatActivity() {
                 val keyDoc = db.collection("serialKeys").document(key).get().await()
 
                 if (!keyDoc.exists()) {
+                    val f = prefs.getInt("key_fail_count", 0) + 1
+                    if (f >= 5) prefs.edit().putInt("key_fail_count", 0).putLong("key_lock_until", System.currentTimeMillis() + 10 * 60_000L).apply()
+                    else prefs.edit().putInt("key_fail_count", f).apply()
                     showError("এই কোডটা সঠিক নয়")
                     return@launch
                 }

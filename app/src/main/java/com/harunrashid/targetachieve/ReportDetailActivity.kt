@@ -101,6 +101,13 @@ class ReportDetailActivity : AppCompatActivity() {
         binding.tvBaseSalary.text = "Base Salary (Clean Money × Target %): ${f0(r.baseSalary)} AED"
         binding.tvExtraAdd.text = "+ Tips: ${f0(r.extraAdd)} AED"
         binding.tvFuelPenalty.text = "- Fuel Penalty (excess vacant km): ${f0(r.fuelPenalty)} AED"
+        if (r.penalty > 0) {
+            val why = if (r.penaltyNote.isNotBlank()) " (${r.penaltyNote.trim()})" else ""
+            binding.tvCompanyPenalty.text = "- Company Penalty$why: ${f0(r.penalty)} AED"
+            binding.tvCompanyPenalty.visibility = View.VISIBLE
+        } else {
+            binding.tvCompanyPenalty.visibility = View.GONE
+        }
         binding.tvFinalSalary.text = "Final Salary: ${f0(r.finalSalary)} AED"
 
         showDays(r)

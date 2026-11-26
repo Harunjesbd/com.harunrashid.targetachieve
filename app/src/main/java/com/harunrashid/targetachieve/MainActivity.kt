@@ -29,7 +29,11 @@ import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import com.harunrashid.targetachieve.databinding.ActivityMainBinding
 import com.harunrashid.targetachieve.databinding.NavDrawerContentBinding
 import com.harunrashid.targetachieve.logic.NotificationHelper
@@ -164,8 +168,16 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ProfileEditActivity::class.java))
         }
         drawerBinding.btnUploadProfilePic.setOnClickListener { chooseProfilePictureSource() }
-        drawerBinding.btnAdminPanel.visibility = View.GONE   // শুধু অ্যাডমিনের ফোনে দেখাবে
-        drawerBinding.btnAdminPanel.setOnClickListener { openAdminPanel() }
+        // Admin Panel খোলা জায়গায় নয়: টুলবারের ⋮ মেনুর ভেতরে (শুধু অ্যাডমিনের ফোনে দেখায়)
+        binding.btnToolbarMore.setOnClickListener { v ->
+            val pm = android.widget.PopupMenu(this, v)
+            pm.menu.add(0, 1, 0, "🔒  Admin Panel")
+            pm.setOnMenuItemClickListener { item ->
+                if (item.itemId == 1) openAdminPanel()
+                true
+            }
+            pm.show()
+        }
         drawerBinding.btnLogout.setOnClickListener { performLogout() }
 
         drawerBinding.rgDrawerTaxiType.setOnCheckedChangeListener { group, checkedId ->
@@ -311,10 +323,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ---------- Profile / dashboard ----------
+    // প্রোফাইলের তথ্য মেনু/ড্রয়ারে বসানো
+    private fun paintProfile(profile: UserProfile) {
+        drawerBinding.tvDrawerName.text = profile.name
+        drawerBinding.tvDrawerMobile.text = profile.mobile
+        drawerBinding.tvDrawerDriverNo.text = "Driver No: ${profile.driverId}"
+        showProfilePicture(profile.profilePicBase64)
+
+        if (profile.taxiTypeEnum() == TaxiType.AIRPORT_TAXI) drawerBinding.rbDrawerAirportTaxi.isChecked = true
+        else drawerBinding.rbDrawerShiftTaxi.isChecked = true
+
+        drawerBinding.switchBiometric.isChecked =
+            getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("biometric_enabled", false)
+    }
+
     private fun loadProfileAndDashboard() {
         val key = profileKey() ?: return
 
         lifecycleScope.launch {
+            // ধাপ ০ (তাৎক্ষণিক): ফোনে জমানো কপি থেকে সঙ্গে সঙ্গে স্ক্রিন ভরা, ইন্টারনেটের অপেক্ষা ছাড়া
+            try {
+                RateProvider.loadCached(this@MainActivity)
+                val cached = db.collection("users").document(key).get(Source.CACHE).await()
+                    .toObject(UserProfile::class.java)
+                if (cached != null) {
+                    paintProfile(cached)
+                    loadCurrentPeriodShifts(key, cached.taxiTypeEnum(), Source.CACHE)
+                }
+            } catch (_: Exception) { }
+
             try {
                 if (auth.currentUser == null) auth.signInAnonymously().await()
 
@@ -328,34 +365,31 @@ class MainActivity : AppCompatActivity() {
                 }
                 currentProfile = profile
                 RateProvider.applyProfile(profile)
+                if (!profile.migrated) migrateOwnership(key, profile)
+                paintProfile(profile)
 
-                // Admin Panel মেনু শুধু admins তালিকার ব্যবহারকারীর কাছে দেখাবে
-                val isAdminUser = try {
-                    db.collection("admins").document(key).get().await().exists()
-                } catch (e: Exception) { false }
-                drawerBinding.btnAdminPanel.visibility = if (isAdminUser) View.VISIBLE else View.GONE
+                // এক সঙ্গে চারটা কাজ (একটার পর একটা নয়): Admin কিনা, সার্ভারের সময়, ফ্রি-তারিখ, কোম্পানির রেট
+                val (isAdminUser, now, freeUntil) = coroutineScope {
+                    val adminD = async {
+                        try { db.collection("admins").document(key).get().await().exists() }
+                        catch (e: Exception) { false }
+                    }
+                    val timeD = async { ServerTime.now(this@MainActivity) }
+                    val freeD = async {
+                        try {
+                            db.collection("config").document("app").get().await()
+                                .getTimestamp("freeUntil")?.toDate()?.time ?: 0L
+                        } catch (e: Exception) { 0L }
+                    }
+                    val rateD = async { RateProvider.refreshRemote(this@MainActivity) }
+                    rateD.await()
+                    Triple(adminD.await(), timeD.await(), freeD.await())
+                }
+                binding.btnToolbarMore.visibility = if (isAdminUser) View.VISIBLE else View.GONE
 
-                drawerBinding.tvDrawerName.text = profile.name
-                drawerBinding.tvDrawerMobile.text = profile.mobile
-                drawerBinding.tvDrawerDriverNo.text = "Driver No: ${profile.driverId}"
-                showProfilePicture(profile.profilePicBase64)
-
-                if (profile.taxiTypeEnum() == TaxiType.AIRPORT_TAXI) drawerBinding.rbDrawerAirportTaxi.isChecked = true
-                else drawerBinding.rbDrawerShiftTaxi.isChecked = true
-
-                drawerBinding.switchBiometric.isChecked =
-                    getSharedPreferences("app_prefs", MODE_PRIVATE).getBoolean("biometric_enabled", false)
-
-                val now = ServerTime.now(this@MainActivity)
                 markActive(key, now)
                 val trialActive = profile.trialExpiryMillis > now
                 val subActive = profile.subscriptionExpiryMillis > now
-
-                // config/app এর freeUntil (তারিখ): সেই তারিখ পর্যন্ত সবার জন্য ফ্রি
-                val freeUntil = try {
-                    db.collection("config").document("app").get().await()
-                        .getTimestamp("freeUntil")?.toDate()?.time ?: 0L
-                } catch (e: Exception) { 0L }
                 val freeActive = freeUntil > now
 
                 if (!trialActive && !subActive && !freeActive) {
@@ -370,10 +404,15 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 if (profile.email.isBlank()) askForEmail(key)
-                RateProvider.refreshRemote(this@MainActivity)
                 loadCurrentPeriodShifts(key, profile.taxiTypeEnum())
-                if (!UpdateChecker.check(this@MainActivity)) {
-                    NoticeHelper.checkAndShow(this@MainActivity)
+
+                // আপডেট/নোটিশ চেক আলাদা কাজ হিসেবে: স্ক্রিন দেখানো আটকায় না
+                lifecycleScope.launch {
+                    try {
+                        if (!UpdateChecker.check(this@MainActivity)) {
+                            NoticeHelper.checkAndShow(this@MainActivity)
+                        }
+                    } catch (_: Exception) { }
                 }
             } catch (e: Exception) {
                 // ignore
@@ -491,7 +530,7 @@ class MainActivity : AppCompatActivity() {
         return Pair(start, end)
     }
 
-    private fun loadCurrentPeriodShifts(key: String, taxiType: TaxiType) {
+    private fun loadCurrentPeriodShifts(key: String, taxiType: TaxiType, source: Source = Source.DEFAULT) {
         val (start, end) = currentPeriodRange()
         currentPeriodStart = start
         currentPeriodEnd = end
@@ -500,7 +539,7 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val snapshot = db.collection("users").document(key).collection("shifts").get().await()
+                val snapshot = db.collection("users").document(key).collection("shifts").get(source).await()
                 // Taxi type লেখা নেই এমন দিনে এখনকার type একবার বসিয়ে দেওয়া হয় (পরে type বদলালেও এই দিন বদলাবে না)
                 val records = snapshot.documents.mapNotNull { d ->
                     val r = d.toObject(ShiftRecord::class.java) ?: return@mapNotNull null
@@ -533,7 +572,7 @@ class MainActivity : AppCompatActivity() {
                 val nextMin = com.harunrashid.targetachieve.logic.CommissionSlab.nextSlab(summary.averageClean)?.second
                 binding.tvSlabNext.text =
                     if (summary.nextTargetPercent != null && nextMin != null)
-                        "Next: %.1f%% at %.0f avg".format(summary.nextTargetPercent, nextMin)
+                        "Next: %.1f%% — needs %.0f avg/day".format(summary.nextTargetPercent, nextMin)
                     else "Highest slab"
                 val topSlab = com.harunrashid.targetachieve.logic.CommissionSlab.TABLE.last().percent
                 binding.progressTarget.progress =
@@ -629,8 +668,110 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    // এই ফোনের পরিচয় (uid) অ্যাকাউন্টের সঙ্গে বাঁধা: প্রথমবার নতুন অ্যাপ চালালে নিঃশব্দে একবার হয়
+    private fun migrateOwnership(key: String, p: UserProfile) {
+        lifecycleScope.launch {
+            try {
+                val uid = auth.currentUser?.uid ?: return@launch
+                val ref = db.collection("users").document(key)
+                ref.update(
+                    mapOf(
+                        "uid" to uid,
+                        "migrated" to true,
+                        "claimName" to p.name.trim().lowercase(),
+                        "claimDriverId" to p.driverId.trim().lowercase()
+                    )
+                ).await()
+                ref.update(
+                    mapOf(
+                        "claimName" to FieldValue.delete(),
+                        "claimDriverId" to FieldValue.delete()
+                    )
+                ).await()
+            } catch (_: Exception) { }
+        }
+    }
+
     // ---------- Finalize ----------
+    // ধাপ ১: শর্ত দেখে কোম্পানির জরিমানা (Penalty) জিজ্ঞেস করা; ধাপ ২: saveReport()
     private fun finalizeCurrentPeriod() {
+        val key = profileKey() ?: return
+        val summary = currentSummary
+        val start = currentPeriodStart
+        val end = currentPeriodEnd
+        if (currentProfile == null || summary == null || start == null || end == null || summary.dayResults.isEmpty()) {
+            Toast.makeText(this, "No shifts added yet to finalize", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val reportId = "${sdf.format(start.time)}_${sdf.format(end.time)}"
+        lifecycleScope.launch {
+            // আগে একবার সেভ করা থাকলে তার জরিমানা আগে থেকে বসানো
+            var prevPenalty = 0.0
+            var prevNote = ""
+            try {
+                val d = db.collection("users").document(key).collection("reports").document(reportId).get().await()
+                prevPenalty = d.getDouble("penalty") ?: 0.0
+                prevNote = d.getString("penaltyNote") ?: ""
+            } catch (_: Exception) { }
+            showPenaltyDialog(summary.finalSalary, prevPenalty, prevNote)
+        }
+    }
+
+    private fun showPenaltyDialog(salaryBefore: Double, prevPenalty: Double, prevNote: String) {
+        fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+        }
+        box.addView(TextView(this).apply {
+            text = "Salary before deduction: %.0f AED".format(Locale.ENGLISH, salaryBefore)
+            textSize = 14f
+            setPadding(0, dp(4), 0, dp(10))
+        })
+        box.addView(TextView(this).apply { text = "Company Penalty (AED) — leave 0 if none"; textSize = 12f })
+        val etPenalty = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText(if (prevPenalty > 0) "%.0f".format(Locale.ENGLISH, prevPenalty) else "0")
+            setSelectAllOnFocus(true)
+            setOnFocusChangeListener { v, f -> if (f) (v as EditText).post { v.selectAll() } }
+            setOnClickListener { (it as EditText).selectAll() }
+        }
+        box.addView(etPenalty)
+        box.addView(TextView(this).apply { text = "Reason (optional)"; textSize = 12f; setPadding(0, dp(10), 0, 0) })
+        val etNote = EditText(this).apply {
+            hint = "e.g. accident / fine"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            setText(prevNote)
+        }
+        box.addView(etNote)
+        val tvNet = TextView(this).apply {
+            textSize = 15f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, dp(14), 0, dp(4))
+        }
+        box.addView(tvNet)
+
+        fun penaltyValue(): Double = (etPenalty.text.toString().trim().replace(',', '.').toDoubleOrNull() ?: 0.0).coerceAtLeast(0.0)
+        fun refresh() {
+            val net = (salaryBefore - penaltyValue()).coerceAtLeast(0.0)
+            tvNet.text = "Final salary after deduction: %.0f AED".format(Locale.ENGLISH, net)
+        }
+        refresh()
+        etPenalty.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) = refresh()
+        })
+
+        AlertDialog.Builder(this)
+            .setTitle("Finalize & Save")
+            .setView(android.widget.ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Save Report") { _, _ -> saveReport(penaltyValue(), etNote.text.toString().trim()) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun saveReport(penalty: Double, penaltyNote: String) {
         val key = profileKey() ?: return
         val profile = currentProfile ?: return
         val summary = currentSummary
@@ -652,7 +793,9 @@ class MainActivity : AppCompatActivity() {
             baseSalary = summary.baseSalary,
             extraAdd = summary.extraAdd,
             fuelPenalty = summary.fuelPenalty,
-            finalSalary = summary.finalSalary,
+            finalSalary = (summary.finalSalary - penalty).coerceAtLeast(0.0),
+            penalty = penalty,
+            penaltyNote = penaltyNote,
             achievedTargetPercent = summary.currentTargetPercent,
             nextTargetPercent = summary.nextTargetPercent ?: 0.0,
             aedNeededPerDayForNextTarget = summary.aedNeededPerDayForNextTarget ?: 0.0,

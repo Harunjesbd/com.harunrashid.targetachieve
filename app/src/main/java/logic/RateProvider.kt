@@ -67,6 +67,14 @@ object RateProvider {
         custom = p.customRates
     }
 
+    /** ফোনে সেভ করা শেষ কোম্পানি-রেট সঙ্গে সঙ্গে লোড (ইন্টারনেটের অপেক্ষা ছাড়া, অ্যাপ দ্রুত খোলার জন্য) */
+    fun loadCached(ctx: Context) {
+        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val m = HashMap<String, Double>()
+        prefs.all.forEach { (k, v) -> (v as? String)?.toDoubleOrNull()?.let { m[k] = it } }
+        if (m.isNotEmpty()) remote = m
+    }
+
     /** Firestore config/rates থেকে কোম্পানির Default রেট আনে; ইন্টারনেট না থাকলে আগের সেভ করা কপি */
     suspend fun refreshRemote(ctx: Context) {
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

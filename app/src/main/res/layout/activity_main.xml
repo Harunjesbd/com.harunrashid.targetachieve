@@ -27,6 +27,21 @@
                 android:textColor="@color/ta_champagne"
                 android:textSize="16sp"
                 android:textStyle="bold|italic" />
+
+            <!-- ⋮ মেনু: শুধু অ্যাডমিনের কাছে দেখায়, ভেতরে Admin Panel -->
+            <TextView
+                android:id="@+id/btnToolbarMore"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="end|center_vertical"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="⋮"
+                android:textColor="@color/ta_champagne"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </androidx.appcompat.widget.Toolbar>
 
         <ScrollView
@@ -50,34 +65,11 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Current Period (21 - 20)"
-                            android:textColor="@color/ta_champagne"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvPeriodRange"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/ta_white"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
                     <!-- ছোট কার্ড: Total Deposit -->
                     <LinearLayout
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="8dp"
                         android:background="@drawable/bg_card_gold"
                         android:gravity="center"
                         android:orientation="vertical"
@@ -103,6 +95,35 @@
                             android:textSize="17sp"
                             android:textStyle="bold" />
                     </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_period_border"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical"
+                        android:paddingStart="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="12dp"
+                        android:paddingBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Current Period (21 - 20)"
+                            android:textColor="@color/ta_champagne"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvPeriodRange"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/ta_white"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
                 </LinearLayout>
 
     <LinearLayout

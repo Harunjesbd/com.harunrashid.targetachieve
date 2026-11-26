@@ -16,6 +16,9 @@ data class UserProfile(
     val email: String = "",
     val lastActiveMillis: Long = 0L,
 
+    // true = এই অ্যাকাউন্ট এখন ফোনের পরিচয় (uid) দিয়ে সুরক্ষিত (v1.11+)
+    val migrated: Boolean = false,
+
     // ---- রেট সেটিংস ----
     // "DEFAULT" = কোম্পানির রেট, "CUSTOM" = ড্রাইভারের নিজের রেট
     val rateMode: String = "DEFAULT",

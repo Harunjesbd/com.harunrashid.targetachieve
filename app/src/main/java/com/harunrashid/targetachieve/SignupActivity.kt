@@ -105,7 +105,13 @@ class SignupActivity : AppCompatActivity() {
                 if (auth.currentUser == null) auth.signInAnonymously().await()
 
                 val ref = db.collection("users").document(key)
-                if (ref.get().await().exists()) {
+                // সুরক্ষিত (migrated) অ্যাকাউন্টের নথি অন্যের পড়া নিষেধ: PERMISSION_DENIED মানে অ্যাকাউন্ট আগেই আছে
+                val alreadyExists = try {
+                    ref.get().await().exists()
+                } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
+                    if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED) true else throw e
+                }
+                if (alreadyExists) {
                     askGoLogin("এই মোবাইল নম্বরে আগেই অ্যাকাউন্ট আছে। Log In করুন।")
                     return@launch
                 }
@@ -143,7 +149,8 @@ class SignupActivity : AppCompatActivity() {
                     trialStartMillis = now,
                     trialExpiryMillis = now + trialDays * 24L * 60 * 60 * 1000,
                     subscriptionExpiryMillis = 0L,
-                    createdAtMillis = now
+                    createdAtMillis = now,
+                    migrated = true
                 )
                 ref.set(profile).await()
 

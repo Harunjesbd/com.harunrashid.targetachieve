@@ -206,7 +206,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:padding="8dp"
-                android:text="Share This App"
+                android:text="📤 Share This App"
                 android:textColor="@color/ta_white"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -231,7 +231,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:padding="8dp"
-                android:text="WhatsApp: +971 55 233 5930"
+                android:text="💬 WhatsApp: +971 55 233 5930"
                 android:textColor="@color/ta_white"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -241,25 +241,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="8dp"
-                android:text="Email: admininfo.bd@gmail.com"
+                android:text="✉️ Email: admininfo.bd@gmail.com"
                 android:textColor="@color/ta_white"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"
-                android:background="@color/ta_inky_border" />
-
-            <TextView
-                android:id="@+id/btnAdminPanel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:text="🔒 Admin Panel"
-                android:textColor="#FF6B6B"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 

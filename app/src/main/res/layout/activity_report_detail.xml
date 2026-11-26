@@ -492,6 +492,16 @@
                     android:textColor="#FFFFFF"
                     android:textSize="14sp" />
 
+                <TextView
+                    android:id="@+id/tvCompanyPenalty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="#FFB4A8"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"

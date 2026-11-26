@@ -36,5 +36,8 @@ data class Report(
     // মাসের মোট Km Hired (পুরনো রিপোর্টে ০)
     val totalKmHired: Double = 0.0,
     // মাসের মোট সাধারণ (Normal) ট্রিপ = Shift Trips − Bookings − Airport (পুরনো রিপোর্টে ০)
-    val normalTrips: Int = 0
+    val normalTrips: Int = 0,
+    // কোম্পানির জরিমানা/কর্তন (ড্রাইভার হাতে বসায়) ও কারণ; finalSalary এটা বাদ দিয়ে (পুরনো রিপোর্টে ০)
+    val penalty: Double = 0.0,
+    val penaltyNote: String = ""
 )

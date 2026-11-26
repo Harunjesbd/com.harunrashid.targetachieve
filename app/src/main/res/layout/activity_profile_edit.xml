@@ -131,7 +131,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="20dp"
-                android:padding="8dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
                 android:text="Mobile"
                 android:textColor="@color/ta_white"
                 android:textSize="15sp"
@@ -212,7 +213,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1.3"
-                    android:text="Shift Trips Rate"
+                    android:text="Normal Trips Rate"
                     android:textColor="@color/ta_champagne"
                     android:textSize="14sp"
                     android:textStyle="bold" />
